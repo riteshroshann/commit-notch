@@ -226,7 +226,7 @@ function openSetup(/** @type {Record<string, string>} */ query = {}) {
   }
   setup = new BrowserWindow({
     width: 940,
-    height: 680,
+    height: 600,
     resizable: false,
     maximizable: false,
     minimizable: false,

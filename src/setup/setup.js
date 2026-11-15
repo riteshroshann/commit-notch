@@ -49,11 +49,6 @@ function show(name) {
     });
   }
   current = name;
-  const g = $("greeting");
-  g.textContent = panes[name]?.dataset.greeting ?? "";
-  g.classList.remove("swap");
-  void g.offsetWidth;
-  g.classList.add("swap");
   document.body.classList.toggle("thinking", name === "code");
   // focus the field if there is one, otherwise the heading, so no ring lights up a button on arrival
   const focus = /** @type {HTMLElement | null} */ (panes[name]?.querySelector("input, h1"));
@@ -101,7 +96,7 @@ document.addEventListener("click", (e) => {
   const t = /** @type {HTMLElement} */ (e.target);
   const go = /** @type {HTMLElement | null} */ (t.closest("[data-go]"))?.dataset.go;
   if (go) {
-    if (current === "code" || current === "connect") api.cancel();
+    if (current === "code" || current === "start") api.cancel();
     busy(/** @type {HTMLButtonElement} */ ($("browser")), null);
     show(go);
   }
@@ -134,7 +129,7 @@ $("browser").addEventListener("click", () => {
 });
 
 api.on("code", (/** @type {typeof grant} */ g) => {
-  if (current !== "connect") return; // the person already moved on
+  if (current !== "start") return; // the person already moved on
   grant = g;
   busy(/** @type {HTMLButtonElement} */ ($("browser")), null);
   if (!g) return;
@@ -160,7 +155,7 @@ $("reopen").addEventListener("click", () => grant && api.open(grant.verification
 $("cancelCode").addEventListener("click", () => {
   api.cancel();
   clearInterval(countdown);
-  show("connect");
+  show("start");
 });
 
 const ERRORS = {
@@ -245,10 +240,8 @@ api.info().then((/** @type {{ version: string, deviceFlow: boolean, openAtLogin:
   if (!info.deviceFlow) {
     // no OAuth app configured in this build: the CLI becomes the main way in
     $("browser").hidden = true;
-    const cli = /** @type {HTMLElement} */ (document.querySelector('[data-pane="connect"] .secondary'));
-    cli.className = "primary press";
   }
-  const start = query.get("pane") ?? "letter";
+  const start = query.get("pane") ?? "start";
   if (mock && start === "code") api.on("code", () => {});
   show(start);
   if (mock && start === "code") {

@@ -11,7 +11,7 @@ It bloops when it opens. It boops when it closes. Nobody asked for that, and it'
 ## Sixty-second setup
 
 1. Run the installer. Windows will clutch its pearls ("Windows protected your PC") because the app isn't code-signed. Click **More info**, then **Run anyway**.
-2. The setup window opens. Hit **Continue with GitHub**, type the code it shows into your browser, approve. Done. Your login stays on your machine, encrypted.
+2. The setup window opens. Hit **Sign in with GitHub**, paste the code (it's already on your clipboard) and approve. Done. Your login stays on your machine, encrypted.
 3. Want private work in the graph? On GitHub, turn on **Include private contributions on my profile**.
 
 Terminal person? `winget install GitHub.cli` then `gh auth login --web --scopes "repo,read:user"`, and Commit Notch signs itself in.
