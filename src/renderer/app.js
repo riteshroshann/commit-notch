@@ -23,6 +23,8 @@ const bridge =
         ],
       }),
       hover() {},
+      quit() {},
+      menu() {},
       refresh() {},
       saveToken: async () => ({ ok: true }),
       on: (/** @type {string} */ c, /** @type {(v: any) => void} */ f) => (handlers[c] = f),
@@ -103,10 +105,30 @@ function setOpen(el) {
 
 for (const el of islands) {
   el.addEventListener("click", (e) => {
-    if (/** @type {HTMLElement} */ (e.target).closest("form, .dots")) return;
+    if (/** @type {HTMLElement} */ (e.target).closest("form, .dots, .quit")) return;
     setOpen(el === openIsland ? null : el);
   });
 }
+
+for (const q of document.querySelectorAll(".quit")) {
+  q.addEventListener("click", (e) => {
+    e.stopPropagation();
+    Sound.play("close");
+    setTimeout(() => bridge.quit(), 220);
+  });
+}
+document.addEventListener("keydown", (e) => {
+  if (openIsland?.id !== "gh" || /** @type {HTMLElement} */ (e.target).closest("form")) return;
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  goPage(pageIndex + step);
+});
+document.addEventListener("contextmenu", (e) => {
+  if (!(/** @type {HTMLElement} */ (e.target).closest(".island"))) return;
+  e.preventDefault();
+  bridge.menu();
+});
 
 for (const el of /** @type {HTMLElement[]} */ ([...document.querySelectorAll(".island")])) {
   el.addEventListener("pointerenter", () => {
@@ -145,7 +167,13 @@ function goPage(i) {
   enterPage();
 }
 
+/** @type {string} */
+let streakText = "";
+const FOOTERS = [null, "Most commits this year", "This year at a glance"];
+
 function enterPage() {
+  $("streak").textContent = FOOTERS[pageIndex] ?? streakText;
+  $("legend").style.visibility = pageIndex === 0 ? "visible" : "hidden";
   if (pageIndex === 1) Motion.grow([...document.querySelectorAll(".bar-fill")], "scaleX");
   if (pageIndex === 2) Motion.grow([...document.querySelectorAll(".kind b")], "scale");
 }
@@ -169,10 +197,10 @@ const fmt = new Intl.NumberFormat("en");
 /** @param {any} d */
 function renderContributions(d) {
   $("name").textContent = d.name;
-  $("av").textContent = d.name.charAt(0).toUpperCase();
+  setAvatar(d);
   $("total").textContent = `${fmt.format(d.total)} contributions in the last year`;
-  $("streak").textContent =
-    `Current streak ${d.current} ${d.current === 1 ? "day" : "days"} · Longest ${d.longest} days`;
+  streakText = `Current streak ${d.current} ${d.current === 1 ? "day" : "days"} · Longest ${d.longest} days`;
+  if (pageIndex === 0) $("streak").textContent = streakText;
   $("chipStreak").textContent = `${d.current} day streak`;
   $("todayCount").textContent = String(d.today);
 
@@ -196,8 +224,10 @@ function renderContributions(d) {
   $("repos").innerHTML = d.repos
     .map(
       (/** @type {any} */ r) => `<div class="repo">
-        <div class="nm"><i class="lang" style="background:${r.language?.color ?? "#8e8e93"}"></i><span>${r.name.split("/")[1]}</span>${r.private ? '<em class="lock">Private</em>' : ""}</div>
+        <span class="nm">${r.name.split("/")[1]}</span>
         <b class="tnum">${fmt.format(r.commits)}</b>
+        <span class="meta"><i class="lang" style="background:${r.language?.color ?? "#8e8e93"}"></i>${r.language?.name ?? "Other"}${r.private ? " · Private" : ""}</span>
+        <span class="unit">commits</span>
         <div class="bar-track"><div class="bar-fill" style="width:${(r.commits / top) * 100}%"></div></div>
       </div>`,
     )
@@ -311,6 +341,8 @@ bridge.init().then((/** @type {any} */ s) => {
   tick();
   const shot = new URLSearchParams(location.search).get("shot");
   if (shot) setTimeout(() => setOpen($(shot)), 600);
+  const page = Number(new URLSearchParams(location.search).get("page") ?? 0);
+  if (page) setTimeout(() => goPage(page), 1200);
 });
 bridge.on("settings", (/** @type {any} */ s) => {
   Sound.setEnabled(s.sound);
@@ -327,3 +359,18 @@ for (const el of /** @type {HTMLElement[]} */ ([...document.querySelectorAll(".i
 }
 if (new URLSearchParams(location.search).get("shot"))
   document.body.style.background = "linear-gradient(#4f93db, #9cc6ee)";
+
+/** Profile photo when GitHub gives one; the initial stays as the fallback. @param {any} d */
+function setAvatar(d) {
+  const av = $("av");
+  av.textContent = d.name.charAt(0).toUpperCase();
+  av.classList.remove("has-img");
+  if (!d.avatar) return;
+  const img = new Image();
+  img.alt = "";
+  img.onload = () => {
+    av.replaceChildren(img);
+    av.classList.add("has-img");
+  };
+  img.src = d.avatar;
+}

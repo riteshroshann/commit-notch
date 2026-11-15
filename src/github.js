@@ -4,7 +4,7 @@ const { flattenWeeks, monthLabels, summary } = require("./stats.js");
 
 const QUERY = `query {
   viewer {
-    login name
+    login name avatarUrl(size: 96)
     contributionsCollection {
       totalCommitContributions totalPullRequestContributions
       totalIssueContributions totalPullRequestReviewContributions
@@ -43,6 +43,7 @@ async function fetchContributions(token) {
   return {
     login: v.login,
     name: v.name || v.login,
+    avatar: v.avatarUrl,
     total: c.contributionCalendar.totalContributions,
     days,
     months: monthLabels(days),

@@ -67,10 +67,15 @@ function createWindow() {
   win.setAlwaysOnTop(true, "pop-up-menu");
   win.setIgnoreMouseEvents(true, { forward: true });
   win.loadFile(path.join(__dirname, "renderer", "index.html"), {
-    query: shotPath ? { shot: process.argv.find((a) => a.startsWith("--open="))?.slice(7) ?? "gh" } : {},
+    query: shotPath
+      ? {
+          shot: process.argv.find((a) => a.startsWith("--open="))?.slice(7) ?? "gh",
+          page: process.argv.find((a) => a.startsWith("--page="))?.slice(7) ?? "0",
+        }
+      : {},
   });
   win.once("ready-to-show", () => win.showInactive());
-  win.on("blur", () => win.webContents.send("collapse"));
+  win.on("blur", () => !shotPath && win.webContents.send("collapse"));
   if (shotPath) {
     win.webContents.once("did-finish-load", () =>
       setTimeout(async () => {
@@ -109,42 +114,47 @@ function trayIcon() {
   return img.isEmpty() ? img : img.resize({ width: 16, height: 16 });
 }
 
+/** Same menu for the tray and a right-click on any island; rebuilt so checkboxes stay current. */
+function appMenu() {
+  return Menu.buildFromTemplate([
+    { label: "Refresh now", click: pushContributions },
+    {
+      label: "Sounds",
+      type: "checkbox",
+      checked: settings.sound,
+      click: (i) => {
+        settings.sound = i.checked;
+        saveSettings();
+        win.webContents.send("settings", settings);
+      },
+    },
+    {
+      label: "Open at login",
+      type: "checkbox",
+      checked: app.getLoginItemSettings().openAtLogin,
+      click: (i) => app.setLoginItemSettings({ openAtLogin: i.checked }),
+    },
+    { type: "separator" },
+    {
+      label: "Sign out of GitHub",
+      click: () => {
+        fs.rmSync(store("token.bin"), { force: true });
+        pushContributions();
+      },
+    },
+    { label: "Quit Commit Notch", click: () => app.quit() },
+  ]);
+}
+
 function buildTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip("Commit Notch");
-  const render = () =>
-    tray.setContextMenu(
-      Menu.buildFromTemplate([
-        { label: "Refresh now", click: pushContributions },
-        {
-          label: "Sounds",
-          type: "checkbox",
-          checked: settings.sound,
-          click: (i) => {
-            settings.sound = i.checked;
-            saveSettings();
-            win.webContents.send("settings", settings);
-          },
-        },
-        {
-          label: "Open at login",
-          type: "checkbox",
-          checked: app.getLoginItemSettings().openAtLogin,
-          click: (i) => app.setLoginItemSettings({ openAtLogin: i.checked }),
-        },
-        { type: "separator" },
-        {
-          label: "Sign out of GitHub",
-          click: () => {
-            fs.rmSync(store("token.bin"), { force: true });
-            pushContributions();
-          },
-        },
-        { label: "Quit", role: "quit" },
-      ]),
-    );
-  render();
+  tray.on("right-click", () => tray.popUpContextMenu(appMenu()));
+  tray.on("click", () => win.webContents.send("open", "gh"));
 }
+
+ipcMain.on("menu", () => appMenu().popup({ window: win }));
+ipcMain.on("quit", () => app.quit());
 
 ipcMain.on("hover", (_e, inside) => {
   win.setIgnoreMouseEvents(!inside, { forward: true });

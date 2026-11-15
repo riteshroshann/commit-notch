@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="author" content="Ritesh Roshan">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' https://avatars.githubusercontent.com data:">
 <title>Commit Notch</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -19,7 +19,7 @@
     <div class="layer full" id="ghFull">
       <div class="head">
         <div class="who"><span class="av" id="av">R</span><span id="name">Ritesh Roshan</span></div>
-        <span class="sub tnum" id="total"></span>
+        <div class="head-r"><span class="sub tnum" id="total"></span><span class="quit" role="button" tabindex="0" aria-label="Quit Commit Notch" title="Quit Commit Notch"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v5.5M4.4 3.6a5.5 5.5 0 1 0 7.2 0"/></svg></span></div>
       </div>
       <div class="pages" id="pages">
         <section class="page" data-page="0">
@@ -31,7 +31,7 @@
       </div>
       <div class="foot">
         <span class="tnum" id="streak"></span>
-        <span class="legend">Less <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> More</span>
+        <span class="legend" id="legend">Less <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> More</span>
       </div>
       <div class="dots" id="dots"><b data-go="0"></b><b data-go="1"></b><b data-go="2"></b></div>
       <form class="signin" id="signin" hidden>

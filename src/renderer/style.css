@@ -47,7 +47,7 @@ body {
   font: inherit;
   padding: 0;
   border-radius: 0 0 16px 16px;
-  overflow: hidden;
+  overflow: clip;
   text-align: left;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32), inset 0 -1px 0 var(--hair);
@@ -196,9 +196,9 @@ body {
 
 .pages {
   position: relative;
-  height: 104px;
-  margin-top: 14px;
-  overflow: hidden;
+  height: 116px;
+  margin-top: 16px;
+  overflow: clip;
 }
 .page {
   position: absolute;
@@ -237,72 +237,6 @@ body {
 }
 .l4 {
   background: var(--g4) !important;
-}
-
-.repos,
-.kinds {
-  display: grid;
-  gap: 8px;
-  padding-top: 2px;
-}
-.repo {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-}
-.repo .nm {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.repo .nm span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.repo .lang {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-}
-.repo .lock {
-  font-size: 10px;
-  color: var(--dim);
-  border: 1px solid var(--faint);
-  border-radius: 5px;
-  padding: 1px 5px;
-}
-.repo .bar-track {
-  grid-column: 1 / -1;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--cell);
-  overflow: hidden;
-  margin-top: -3px;
-}
-.repo .bar-fill {
-  height: 100%;
-  background: var(--g3);
-  border-radius: 2px;
-  transform-origin: left;
-}
-.kinds {
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  padding-top: 10px;
-}
-.kind b {
-  display: block;
-  font: 600 26px / 1 var(--display);
-  letter-spacing: -0.03em;
-}
-.kind span {
-  color: var(--dim);
-  font-size: 11.5px;
 }
 
 .foot {
@@ -460,4 +394,141 @@ body {
 }
 .signin[hidden] {
   display: none;
+}
+
+/* top repos: 2 x 2, name and count on one baseline, meta under, bar last */
+.repos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 40px;
+  row-gap: 20px;
+  padding-top: 4px;
+}
+.repo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 3px;
+}
+.repo .nm {
+  font: 600 13.5px / 1.2 var(--display);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.repo b {
+  font: 600 15px / 1.2 var(--display);
+  letter-spacing: -0.01em;
+  text-align: right;
+}
+.repo .meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim);
+  font-size: 11.5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.repo .unit {
+  color: var(--dim);
+  font-size: 11px;
+  text-align: right;
+}
+.repo .lang {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.repo .bar-track {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--cell);
+  overflow: hidden;
+  margin-top: 7px;
+}
+.repo .bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--g2), var(--g4));
+  border-radius: 2px;
+  transform-origin: left;
+}
+
+/* year at a glance */
+.kinds {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  height: 100%;
+  align-content: center;
+  padding-bottom: 8px;
+}
+.kind {
+  padding: 0 20px;
+  border-left: 1px solid var(--hair);
+}
+.kind:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.kind b {
+  display: block;
+  font: 600 30px / 1 var(--display);
+  letter-spacing: -0.035em;
+  transform-origin: left bottom;
+}
+.kind span {
+  display: block;
+  color: var(--dim);
+  font-size: 11.5px;
+  margin-top: 8px;
+}
+
+/* quit */
+.head-r {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.quit {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--dim);
+  transition: background 0.2s, color 0.2s;
+}
+.quit svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.quit:hover {
+  background: rgba(255, 105, 97, 0.16);
+  color: #ff6961;
+}
+.quit:focus-visible {
+  outline: 2px solid var(--g4);
+  outline-offset: 1px;
+}
+
+.av img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+.av.has-img {
+  background: var(--cell);
+  box-shadow: 0 0 0 1px var(--hair);
 }
