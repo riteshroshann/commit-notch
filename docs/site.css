@@ -216,20 +216,26 @@ ol.steps p {
   color: var(--dim);
 }
 
-pre {
+/* Code blocks: the copy button lives on the wrapper, outside the scroller, so it never
+   scrolls with the code; text that slides beneath it fades out under a solid backing. */
+.code {
   position: relative;
+  margin: 0 0 20px;
+}
+pre {
   background: var(--raise);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px 18px;
   overflow-x: auto;
   line-height: 1.6;
-  margin: 0 0 20px;
+  margin: 0;
 }
 .copy {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 9px;
+  right: 9px;
+  z-index: 1;
   background: #1a1a1d;
   color: var(--dim);
   border: 0;
@@ -237,9 +243,55 @@ pre {
   font: 500 12px var(--sans);
   padding: 5px 10px;
   cursor: pointer;
+  box-shadow: -14px 0 12px var(--raise);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.code:hover .copy,
+.copy:focus-visible,
+.copy.done {
+  opacity: 1;
 }
 .copy:hover {
   color: var(--ink);
+}
+@media (hover: none) {
+  .copy {
+    opacity: 1;
+  }
+}
+
+/* sleek scrollbars: 6px, rounded, no arrow buttons; brighter on hover */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+pre::-webkit-scrollbar-thumb {
+  border: 2px solid var(--raise);
+  background-clip: padding-box;
+}
+@supports not selector(::-webkit-scrollbar) {
+  html,
+  pre,
+  .table,
+  .side {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  }
 }
 
 footer {
