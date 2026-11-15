@@ -11,10 +11,14 @@ It bloops when it opens. It boops when it closes. Nobody asked for that, and it'
 ## Sixty-second setup
 
 1. Run the installer. Windows will clutch its pearls ("Windows protected your PC") because the app isn't code-signed. Click **More info**, then **Run anyway**.
-2. Already use the GitHub CLI? You're done, it finds your login. Otherwise, click the middle island and paste a classic token with `repo` and `read:user` scopes.
+2. The setup window opens. Hit **Continue with GitHub**, type the code it shows into your browser, approve. Done. Your login stays on your machine, encrypted.
 3. Want private work in the graph? On GitHub, turn on **Include private contributions on my profile**.
 
+Terminal person? `winget install GitHub.cli` then `gh auth login --web --scopes "repo,read:user"`, and Commit Notch signs itself in.
+
 Click the middle island to open it, then scroll or use the arrow keys to flip pages. Right-click any island for settings, or hit the power button to quit.
+
+**Breaking up?** Settings → Apps → Commit Notch → Uninstall. It takes everything with it: the app, the start-at-login entry, your encrypted login, the cache. No clingy leftovers.
 
 ## For the curious
 
@@ -30,4 +34,6 @@ It's plain JavaScript in one transparent Electron window. Springs are real physi
 
 Your token stays on your machine, encrypted. The app talks to GitHub and a time server, and that's the whole guest list.
 
-MIT licensed. Engineered by Ritesh Roshan.
+[Privacy](https://riteshroshann.github.io/commit-notch/privacy.html) · [Terms](https://riteshroshann.github.io/commit-notch/terms.html) · MIT licensed. Not affiliated with GitHub, Inc.
+
+Engineered by Ritesh Roshan.

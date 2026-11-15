@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy policy · Commit Notch</title>
+<meta name="description" content="What Commit Notch collects (nothing), what it stores on your PC, and who it talks to.">
+<meta name="author" content="Ritesh Roshan">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://riteshroshann.github.io/commit-notch/privacy.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<main class="wrap" style="padding-block: 72px 0">
+  <p><a href="./">Commit Notch</a></p>
+  <h1 style="font-size: 44px; text-align: left; margin-top: 32px">Privacy policy</h1>
+  <p class="dim">Last updated 15 November 2026</p>
+  <section>
+    <h2>The short version</h2>
+    <p class="dim">Commit Notch has no servers, no accounts, no analytics and no telemetry. Nothing about you is sent to the person who made it, or to anyone else.</p>
+  </section>
+  <section>
+    <h2>What stays on your PC</h2>
+    <p class="dim">Everything Commit Notch keeps lives in <code>%APPDATA%\Commit Notch</code>: your GitHub sign in, encrypted with Windows DPAPI so only your Windows account can read it, a cache of your last contribution data so the app opens instantly, and your settings. Uninstalling deletes all of it.</p>
+  </section>
+  <section>
+    <h2>Who it talks to</h2>
+    <p class="dim"><b>GitHub</b>, using your own sign in, to read your contribution calendar, your recently pushed repositories and your profile name and photo. It asks for the <code>repo</code> and <code>read:user</code> scopes because GitHub only shows private contributions to apps with repo access. Commit Notch only reads; it never writes to GitHub.</p>
+    <p class="dim"><b>Cloudflare's time service</b> (<code>time.cloudflare.com</code>), over NTP, to keep the clock accurate. That request carries no information about you beyond what any network request does.</p>
+    <p class="dim"><b>Google Fonts</b> serves the typeface in the setup window and on this site.</p>
+  </section>
+  <section>
+    <h2>Your control</h2>
+    <p class="dim">Sign out from the right-click menu at any time; it deletes your sign in and cache. To revoke access on GitHub's side, open <a href="https://github.com/settings/applications">GitHub Settings → Applications</a>.</p>
+  </section>
+  <section>
+    <h2>Questions</h2>
+    <p class="dim">Open an issue on <a href="https://github.com/riteshroshann/commit-notch/issues">GitHub</a> or email riteshroshansahoo01@gmail.com.</p>
+  </section>
+  <footer>
+    <span>Engineered by Ritesh Roshan</span>
+    <span><a href="./">Home</a> · <a href="terms.html">Terms</a></span>
+  </footer>
+</main>
+</body>
+</html>

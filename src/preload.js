@@ -1,11 +1,15 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+const CHANNELS = new Set(["contributions", "time", "settings", "collapse", "open"]);
+
 contextBridge.exposeInMainWorld("notch", {
   init: () => ipcRenderer.invoke("init"),
   hover: (/** @type {boolean} */ inside) => ipcRenderer.send("hover", inside),
   refresh: () => ipcRenderer.send("refresh"),
   quit: () => ipcRenderer.send("quit"),
   menu: () => ipcRenderer.send("menu"),
-  saveToken: (/** @type {string} */ t) => ipcRenderer.invoke("save-token", t),
-  on: (/** @type {string} */ channel, /** @type {(v: any) => void} */ fn) => ipcRenderer.on(channel, (_e, v) => fn(v)),
+  setup: () => ipcRenderer.send("setup"),
+  on: (/** @type {string} */ channel, /** @type {(v: any) => void} */ fn) => {
+    if (CHANNELS.has(channel)) ipcRenderer.on(channel, (_e, v) => fn(v));
+  },
 });

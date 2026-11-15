@@ -32,6 +32,7 @@
     <a href="#motion">Motion and sound</a>
     <a href="#ipc">IPC</a>
     <a href="#settings">Settings and storage</a>
+    <a href="#uninstall">Install and uninstall</a>
     <a href="#testing">Testing</a>
     <a href="#release">Releasing</a>
     <a href="#contributing">Contributing</a>
@@ -82,7 +83,9 @@ just dev</code></pre>
     <section id="data">
       <h2>GitHub data</h2>
       <p>One GraphQL call to <code>viewer</code> returns everything: <code>contributionsCollection</code> (calendar, totals and the top four repos by commits) and the four most recently pushed repositories. Contributions to private repos are included for your own account. Your profile setting decides whether they also show on github.com.</p>
-      <p>The token comes from <code>gh auth token</code> if the GitHub CLI is signed in. Otherwise it's the one you pasted, which is encrypted with Electron's <code>safeStorage</code> (Windows DPAPI). A classic token needs the <code>repo</code> and <code>read:user</code> scopes. A 401 clears the remembered token and shows the sign-in form.</p>
+      <p>People sign in three ways, all from the setup window in <code>src/setup/</code>. <b>Continue with GitHub</b> runs the OAuth device flow (<code>src/auth.js</code>): the app asks GitHub for a short code, opens the browser, and polls until the person approves. If the GitHub CLI is signed in, its token is picked up with no setup at all. A classic token with <code>repo</code> and <code>read:user</code> scopes can be pasted as a fallback.</p>
+      <p>Every token is checked against GitHub before it replaces the current one, then encrypted with Electron's <code>safeStorage</code> (Windows DPAPI). The cache is tagged with a hash of the token, so data from one account never paints for another, and an internal sign-in epoch drops any fetch that started before a sign in or sign out. A 401 forgets the token and returns to the signed-out state, which shows no name and no data.</p>
+      <p>Device flow needs an OAuth App with <b>Enable Device Flow</b> ticked. Put its client ID in <code>package.json</code> as <code>githubClientId</code>, or set <code>COMMIT_NOTCH_CLIENT_ID</code> while developing. Client IDs are public; device flow uses no client secret. Without one, setup offers the CLI and token routes only.</p>
     </section>
 
     <section id="clock">
@@ -115,9 +118,16 @@ just dev</code></pre>
 }</code></pre>
     </section>
 
+    <section id="uninstall">
+      <h2>Install and uninstall</h2>
+      <p>The installer is a per-user NSIS one-click build: no admin rights, installed to <code>%LOCALAPPDATA%\Programs\commit-notch</code>, with a Start menu shortcut and an entry in Settings → Apps and Control Panel. Uninstalling runs <code>build/installer.nsh</code>, which quits the app and removes its start-at-login entry, and <code>deleteAppDataOnUninstall</code> removes the encrypted sign in, cache and settings.</p>
+<pre><code>Commit-Notch-win.exe /S
+"%LOCALAPPDATA%\Programs\commit-notch\Uninstall Commit Notch.exe" /S</code></pre>
+    </section>
+
     <section id="testing">
       <h2>Testing</h2>
-      <p><code>just check</code> runs the unit tests for the streak and calendar logic. <code>just e2e</code> launches the real app and puts it through 14 scenarios: opening, bursts of fast and held arrow keys, wheel bursts, closing and reopening mid-transition, switching islands, rapid clicks and focus loss. After each one it checks the DOM state and measures the pixels inside the open island, so a blank panel fails the run. Screenshots and a report land in the folder you pass.</p>
+      <p><code>just check</code> runs the unit tests for the streak and calendar logic. Setup has its own render check: <code>electron . --setup-shot=out/setup</code> saves every pane as a PNG. <code>just e2e</code> launches the real app and puts it through 14 scenarios: opening, bursts of fast and held arrow keys, wheel bursts, closing and reopening mid-transition, switching islands, rapid clicks and focus loss. After each one it checks the DOM state and measures the pixels inside the open island, so a blank panel fails the run. Screenshots and a report land in the folder you pass.</p>
 <pre><code>electron . --e2e=out/e2e
 electron . --shot=out/panel.png --open=gh --page=2</code></pre>
       <p><code>--shot</code> opens an island (and optionally a page), saves a screenshot and quits. It's handy for checking visual changes.</p>

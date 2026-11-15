@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="author" content="Ritesh Roshan">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://avatars.githubusercontent.com; script-src 'self'">
+<title>Commit Notch</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="setup.css">
+</head>
+<body>
+<main class="frame">
+
+  <aside class="door" aria-hidden="true">
+    <span class="wordmark">Commit Notch</span>
+    <div class="cells" id="cells"></div>
+    <p class="greeting" id="greeting">Hello.</p>
+  </aside>
+
+  <section class="desk">
+    <button class="close press" id="close" type="button" aria-label="Close setup">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+    </button>
+
+    <div class="card" id="card">
+
+      <div class="pane" data-pane="welcome" data-greeting="Hello.">
+        <h1 class="display" tabindex="-1">Your year, up top.</h1>
+        <p class="lede">Three small islands hang from the top of your screen. Each one does one thing.</p>
+        <dl class="tour">
+          <div><dt>Today</dt><dd>Your last seven days at a glance.</dd></div>
+          <div><dt>Your year</dt><dd>Your graph, latest pushes and busiest repos, private ones included.</dd></div>
+          <div><dt>World clock</dt><dd>Synced to atomic time, with four cities.</dd></div>
+        </dl>
+        <button class="primary press" type="button" data-go="connect">Get started</button>
+        <p class="fine">By continuing you agree to the <a href="https://riteshroshann.github.io/commit-notch/terms.html" target="_blank">terms</a> and <a href="https://riteshroshann.github.io/commit-notch/privacy.html" target="_blank">privacy policy</a>.</p>
+      </div>
+
+      <div class="pane" data-pane="connect" data-greeting="Connect.">
+        <h1 class="display" tabindex="-1">Connect GitHub.</h1>
+        <p class="lede">Sign in once. Your login stays on this PC, encrypted, and only ever talks to GitHub.</p>
+        <button class="primary press with-mark" type="button" id="browser">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>
+          Continue with GitHub
+        </button>
+        <button class="secondary press" type="button" data-go="cli">Use the GitHub CLI</button>
+        <p class="fine center"><button class="link" type="button" data-go="token">Paste a token instead</button></p>
+      </div>
+
+      <div class="pane" data-pane="code" data-greeting="Approve." role="status">
+        <h1 class="display" tabindex="-1">Approve in your browser.</h1>
+        <p class="lede">GitHub opened in your browser. Enter this code there, then approve Commit Notch.</p>
+        <div class="code-row">
+          <output class="code" id="userCode">····-····</output>
+          <button class="chip press" type="button" id="copyCode">Copy</button>
+        </div>
+        <p class="wait"><span class="dot"></span><span id="waitText">Waiting for GitHub</span></p>
+        <button class="secondary press" type="button" id="reopen">Open GitHub again</button>
+        <p class="fine center"><button class="link" type="button" id="cancelCode">Cancel</button></p>
+      </div>
+
+      <div class="pane" data-pane="cli" data-greeting="CLI.">
+        <h1 class="display" tabindex="-1">Use the GitHub CLI.</h1>
+        <p class="lede">Run these in PowerShell. The second one opens your browser to finish signing in.</p>
+        <ol class="steps">
+          <li><span>Install it, if you haven't</span><div class="cmd"><code>winget install GitHub.cli</code><button class="chip press" type="button" data-copy="winget install GitHub.cli">Copy</button></div></li>
+          <li><span>Sign in</span><div class="cmd"><code>gh auth login --web --scopes "repo,read:user"</code><button class="chip press" type="button" data-copy='gh auth login --web --scopes "repo,read:user"'>Copy</button></div></li>
+        </ol>
+        <p class="error" id="cliError" role="alert" hidden></p>
+        <button class="primary press" type="button" id="cliCheck">Check sign in</button>
+        <p class="fine center"><button class="link" type="button" data-go="connect">Back</button></p>
+      </div>
+
+      <form class="pane" data-pane="token" data-greeting="Token." id="tokenForm" novalidate>
+        <h1 class="display" tabindex="-1">Paste a token.</h1>
+        <p class="lede">It needs the <b>repo</b> and <b>read:user</b> scopes. <a href="https://github.com/settings/tokens/new?scopes=repo,read:user&amp;description=Commit%20Notch" target="_blank">Create one on GitHub</a>.</p>
+        <label class="label" for="token">Personal access token</label>
+        <div class="field"><input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your token"></div>
+        <p class="error" id="tokenError" role="alert" hidden></p>
+        <button class="primary press" type="submit" id="tokenGo">Connect</button>
+        <p class="fine center"><button class="link" type="button" data-go="connect">Back</button></p>
+      </form>
+
+      <div class="pane" data-pane="done" data-greeting="Welcome.">
+        <div class="avatar" id="avatar"></div>
+        <h1 class="display" tabindex="-1" id="doneTitle">You're in.</h1>
+        <p class="lede" id="doneText">Look up. Your year now lives at the top of your screen. Click the middle island to open it.</p>
+        <label class="toggle">
+          <span><b>Open at login</b><small>Start Commit Notch with Windows.</small></span>
+          <input type="checkbox" id="atLogin" checked>
+          <i aria-hidden="true"></i>
+        </label>
+        <button class="primary press" type="button" id="finish">Finish</button>
+      </div>
+
+      <div class="pane" data-pane="error" data-greeting="Again.">
+        <h1 class="display" tabindex="-1" id="errTitle">Sign in didn't finish.</h1>
+        <p class="lede" id="errText">GitHub didn't confirm the sign in. Try again.</p>
+        <button class="primary press" type="button" data-go="connect">Try again</button>
+      </div>
+
+    </div>
+
+    <footer class="foot">
+      <span>Engineered by Ritesh Roshan</span>
+      <nav><a href="https://riteshroshann.github.io/commit-notch/privacy.html" target="_blank">Privacy</a><a href="https://riteshroshann.github.io/commit-notch/terms.html" target="_blank">Terms</a><span class="version" id="version"></span></nav>
+    </footer>
+  </section>
+
+</main>
+<script src="setup.js"></script>
+</body>
+</html>

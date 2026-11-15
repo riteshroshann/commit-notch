@@ -55,10 +55,31 @@
   <section aria-labelledby="setup">
     <h2 id="setup">Set it up in a minute</h2>
     <ol class="steps">
-      <li><div><b>Install</b><p>Run <code>Commit-Notch-win.exe</code>. Windows may say it protected your PC, because the app isn't code-signed yet. Click <b>More info</b>, then <b>Run anyway</b>.</p></div></li>
-      <li><div><b>Sign in</b><p>If you use the GitHub CLI, you're already done: it picks up <code>gh auth login</code>. Otherwise click the middle island and paste a classic token with <code>repo</code> and <code>read:user</code> scopes.</p></div></li>
+      <li><div><b>Install</b><p>Run <code>Commit-Notch-win.exe</code>. It installs for you alone, no admin rights needed, and starts straight away. Windows may say it protected your PC, because the app isn't code-signed yet. Click <b>More info</b>, then <b>Run anyway</b>.</p></div></li>
+      <li><div><b>Sign in</b><p>A setup window opens. Click <b>Continue with GitHub</b>, enter the code it shows in your browser, and approve. Your login stays on your PC, encrypted.</p></div></li>
       <li><div><b>Count your private work</b><p>On GitHub, open your profile settings and turn on <b>Include private contributions on my profile</b>.</p></div></li>
     </ol>
+  </section>
+
+  <section aria-labelledby="cli">
+    <h2 id="cli">Prefer the terminal</h2>
+    <p class="dim">If you sign in with the GitHub CLI, Commit Notch finds that login on its own and skips the browser step. Run these in PowerShell before or after installing:</p>
+<pre><code>winget install GitHub.cli
+gh auth login --web --scopes "repo,read:user"</code></pre>
+    <p class="dim">The second command opens your browser to approve. Then click <b>Use the GitHub CLI</b> in setup and <b>I've signed in</b>, or just restart Commit Notch.</p>
+  </section>
+
+  <section aria-labelledby="remove">
+    <h2 id="remove">Uninstall</h2>
+    <p class="dim">Open <b>Settings</b>, then <b>Apps</b>, then <b>Installed apps</b>, find <b>Commit Notch</b> and choose <b>Uninstall</b>. Control Panel's <b>Programs and Features</b> works too, and so does <b>Uninstall…</b> in the app's right-click menu. Uninstalling quits the app and removes it, its start-at-login entry, your encrypted login, the cache and your settings.</p>
+    <p class="dim">Using the portable zip? Right-click an island, turn off <b>Open at login</b>, choose <b>Sign out of GitHub</b>, quit, then delete the folder. To revoke access on GitHub's side too, open <a href="https://github.com/settings/applications">Settings → Applications</a> and revoke Commit Notch.</p>
+  </section>
+
+  <section aria-labelledby="it">
+    <h2 id="it">For IT teams</h2>
+    <p class="dim">Install and remove silently, per user:</p>
+<pre><code>Commit-Notch-win.exe /S
+"%LOCALAPPDATA%\Programs\commit-notch\Uninstall Commit Notch.exe" /S</code></pre>
   </section>
 
   <section aria-labelledby="privacy">
@@ -68,7 +89,7 @@
 
   <footer>
     <span>Engineered by Ritesh Roshan</span>
-    <span><a href="developers.html">Developer docs</a> · <a href="https://github.com/riteshroshann/commit-notch">GitHub</a> · <a href="https://github.com/riteshroshann/commit-notch/issues">Report a bug</a></span>
+    <span><a href="developers.html">Developer docs</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="https://github.com/riteshroshann/commit-notch/issues">Report a bug</a></span>
   </footer>
 </main>
 

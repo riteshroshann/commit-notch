@@ -6,6 +6,7 @@
   "author": "Ritesh Roshan <riteshroshansahoo01@gmail.com>",
   "license": "MIT",
   "main": "src/main.js",
+  "githubClientId": "",
   "scripts": {
     "start": "electron .",
     "dist": "electron scripts/dist.js"
@@ -22,7 +23,13 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": true,
+      "include": "build/installer.nsh",
+      "shortcutName": "Commit Notch",
+      "uninstallDisplayName": "Commit Notch",
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true
     },
     "publish": [
       {
