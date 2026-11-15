@@ -607,3 +607,56 @@ h1:focus-visible {
   overflow: hidden;
   padding-top: 64px;
 }
+
+/* the welcome letter */
+.letter {
+  margin-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+.letter p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(13, 17, 23, 0.7);
+  text-wrap: pretty;
+}
+.sign {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sign img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(13, 17, 23, 0.06);
+}
+.sign b {
+  display: block;
+  font-weight: 500;
+  font-size: 15px;
+}
+.sign small {
+  display: block;
+  font-size: 13px;
+  color: rgba(13, 17, 23, 0.55);
+}
+.pane[data-pane="letter"] .primary {
+  margin-top: 28px;
+}
+.pane[data-pane="letter"] .letter {
+  margin-top: 16px;
+  gap: 10px;
+}
+.pane[data-pane="letter"] .letter p {
+  line-height: 1.55;
+}
+.pane[data-pane="letter"] .sign {
+  margin-top: 20px;
+}
+.pane[data-pane="letter"] .primary {
+  margin-top: 24px;
+}

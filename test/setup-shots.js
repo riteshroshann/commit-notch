@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { app } = require("electron");
 
-const PANES = ["welcome", "connect", "code", "cli", "token", "done", "error"];
+const PANES = ["letter", "welcome", "connect", "code", "cli", "token", "done", "error"];
 
 /** @param {(q: Record<string, string>) => import("electron").BrowserWindow} open @param {string} out */
 module.exports = async function shoot(open, out) {

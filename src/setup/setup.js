@@ -248,7 +248,7 @@ api.info().then((/** @type {{ version: string, deviceFlow: boolean, openAtLogin:
     const cli = /** @type {HTMLElement} */ (document.querySelector('[data-pane="connect"] .secondary'));
     cli.className = "primary press";
   }
-  const start = query.get("pane") ?? "welcome";
+  const start = query.get("pane") ?? "letter";
   if (mock && start === "code") api.on("code", () => {});
   show(start);
   if (mock && start === "code") {
