@@ -23,6 +23,7 @@ const bridge =
         ],
       }),
       hover() {},
+      setup() {},
       quit() {},
       menu() {},
       refresh() {},
@@ -108,9 +109,11 @@ function sampleData() {
 const islands = /** @type {HTMLElement[]} */ ([$("gh"), $("clk")]);
 /** @type {HTMLElement | null} */
 let openIsland = null;
+let signedOut = false;
 
 /** @param {HTMLElement | null} el */
 function setOpen(el) {
+  if (el?.id === "gh" && signedOut) return bridge.setup(); // nothing to show until someone signs in
   if (el === openIsland) return;
   const prev = openIsland;
   openIsland = el;
@@ -129,6 +132,7 @@ function setOpen(el) {
 for (const el of islands) {
   el.addEventListener("click", (e) => {
     if (/** @type {HTMLElement} */ (e.target).closest("form, .dots, .quit")) return;
+    if (el.id === "gh" && signedOut) return bridge.setup();
     setOpen(el === openIsland ? null : el);
   });
 }
@@ -245,9 +249,9 @@ function renderContributions(d) {
   $("latest").innerHTML = (d.latest ?? [])
     .map(
       (/** @type {any} */ r) => `<div class="repo">
-        <span class="nm">${r.name.split("/")[1]}</span>
+        <span class="nm">${esc(r.name.split("/")[1])}</span>
         <b class="tnum">${ago(r.pushedAt)}</b>
-        <span class="meta"><i class="lang" style="background:${r.language?.color ?? "#8e8e93"}"></i>${r.language?.name ?? "Other"}${r.private ? " · Private" : ""}</span>
+        <span class="meta"><i class="lang" style="background:${color(r.language?.color)}"></i>${esc(r.language?.name ?? "Other")}${r.private ? " · Private" : ""}</span>
         <span class="unit">${r.name.split("/")[0] === d.login ? "pushed" : r.name.split("/")[0]}</span>
         <div class="bar-track"><div class="bar-fill" style="width:${freshness(r.pushedAt, d.latest)}%"></div></div>
       </div>`,
@@ -258,9 +262,9 @@ function renderContributions(d) {
   $("repos").innerHTML = d.repos
     .map(
       (/** @type {any} */ r) => `<div class="repo">
-        <span class="nm">${r.name.split("/")[1]}</span>
+        <span class="nm">${esc(r.name.split("/")[1])}</span>
         <b class="tnum">${fmt.format(r.commits)}</b>
-        <span class="meta"><i class="lang" style="background:${r.language?.color ?? "#8e8e93"}"></i>${r.language?.name ?? "Other"}${r.private ? " · Private" : ""}</span>
+        <span class="meta"><i class="lang" style="background:${color(r.language?.color)}"></i>${esc(r.language?.name ?? "Other")}${r.private ? " · Private" : ""}</span>
         <span class="unit">commits</span>
         <div class="bar-track"><div class="bar-fill" style="width:${(r.commits / top) * 100}%"></div></div>
       </div>`,
@@ -293,24 +297,33 @@ function labelsFor(days) {
 }
 
 bridge.on("contributions", (/** @type {any} */ res) => {
-  const signin = /** @type {HTMLFormElement} */ ($("signin"));
-  signin.hidden = res.error !== "signin";
-  if (res.data) renderContributions(res.data);
-  else if (res.error === "signin") $("chipStreak").textContent = "Sign in";
-  else if (!$("grid").childElementCount) $("chipStreak").textContent = "Offline";
-});
-
-$("signin").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const input = /** @type {HTMLInputElement} */ ($("token"));
-  $("tokenErr").textContent = "Checking…";
-  const res = await bridge.saveToken(input.value);
-  if (res.ok) {
-    $("tokenErr").textContent = "";
-    input.value = "";
-    Sound.play("success");
-  } else {
-    $("tokenErr").textContent = `${res.error}. Check the token's scopes and try again.`;
+  if (res.data) {
+    signedOut = false;
+    document.body.classList.remove("signed-out");
+    renderContributions(res.data);
+  } else if (res.error === "signin") {
+    // nobody is signed in: no name, no graph, just an invitation
+    signedOut = true;
+    document.body.classList.add("signed-out");
+    if (openIsland?.id === "gh") setOpen(null);
+    streakText = "";
+    for (const id of [
+      "name",
+      "av",
+      "total",
+      "grid",
+      "months",
+      "latest",
+      "repos",
+      "kinds",
+      "week",
+      "todayCount",
+      "streak",
+    ])
+      $(id).replaceChildren();
+    $("chipStreak").textContent = "Connect GitHub";
+  } else if (!$("grid").childElementCount) {
+    $("chipStreak").textContent = "Offline";
   }
 });
 
@@ -433,4 +446,13 @@ function freshness(iso, all) {
 if (new URLSearchParams(location.search).has("demo")) {
   document.body.classList.add("demo");
   setTimeout(() => !openIsland && setOpen($("gh")), 900);
+}
+
+/** Repo and language names come from the network; keep them as text. @param {string} s */
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+/** @param {string | undefined} c */
+function color(c) {
+  return /^#[0-9a-f]{3,8}$/i.test(c ?? "") ? c : "#8e8e93";
 }

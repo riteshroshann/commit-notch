@@ -1,12 +1,12 @@
 {
   "name": "commit-notch",
   "productName": "Commit Notch",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Your GitHub contributions and an atomic world clock, hanging from the top of your screen.",
   "author": "Ritesh Roshan <riteshroshansahoo01@gmail.com>",
   "license": "MIT",
   "main": "src/main.js",
-  "githubClientId": "",
+  "githubClientId": "Ov23li5JPEpyTEY7Yhth",
   "scripts": {
     "start": "electron .",
     "dist": "electron scripts/dist.js"
