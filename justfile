@@ -19,3 +19,12 @@ fmt:
 # Installer and portable zip into dist/
 dist:
     $env:ELECTRON_RUN_AS_NODE="1"; node_modules/electron/dist/electron.exe scripts/dist.js
+
+# Drive the real window and check every state
+e2e:
+    $env:ELECTRON_RUN_AS_NODE=$null; node_modules/electron/dist/electron.exe . --e2e=out/e2e
+
+# Refresh docs/ demo, OG image and favicons
+site:
+    Copy-Item src/renderer/* docs/demo/ -Force
+    $env:ELECTRON_RUN_AS_NODE=$null; node_modules/electron/dist/electron.exe scripts/site-assets.js

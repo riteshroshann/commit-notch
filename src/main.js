@@ -10,7 +10,11 @@ const REFRESH_MS = 15 * 60 * 1000;
 const RESYNC_MS = 10 * 60 * 1000;
 
 const shotPath = process.argv.find((a) => a.startsWith("--shot="))?.slice(7);
-if (!shotPath && !app.requestSingleInstanceLock()) app.quit();
+const arg = (/** @type {string} */ name) =>
+  process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+const e2eOut = arg("e2e");
+const rendererDir = arg("renderer") ?? path.join(__dirname, "renderer");
+if (!shotPath && !e2eOut && !app.requestSingleInstanceLock()) app.quit();
 
 const store = (name) => path.join(app.getPath("userData"), name);
 
@@ -66,7 +70,7 @@ function createWindow() {
   });
   win.setAlwaysOnTop(true, "pop-up-menu");
   win.setIgnoreMouseEvents(true, { forward: true });
-  win.loadFile(path.join(__dirname, "renderer", "index.html"), {
+  win.loadFile(path.join(rendererDir, "index.html"), {
     query: shotPath
       ? {
           shot: process.argv.find((a) => a.startsWith("--open="))?.slice(7) ?? "gh",
@@ -75,7 +79,14 @@ function createWindow() {
       : {},
   });
   win.once("ready-to-show", () => win.showInactive());
-  win.on("blur", () => !shotPath && win.webContents.send("collapse"));
+  if (e2eOut) {
+    // real mouse passes through; the suite drives the page with synthetic events only
+    win.webContents.once("did-finish-load", async () => {
+      const failed = await require("../test/e2e.js")(win, e2eOut);
+      app.exit(failed ? 1 : 0);
+    });
+  }
+  win.on("blur", () => !shotPath && !e2eOut && win.webContents.send("collapse"));
   if (shotPath) {
     win.webContents.once("did-finish-load", () =>
       setTimeout(async () => {
@@ -86,12 +97,26 @@ function createWindow() {
   }
 }
 
+/** @type {string | null} */
+let token = null;
+
+function cachedContributions() {
+  try {
+    return JSON.parse(fs.readFileSync(store("cache.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 async function loadContributions() {
-  const token = (await ghCliToken()) || savedToken();
+  token ??= (await ghCliToken()) || savedToken();
   if (!token) return { error: "signin" };
   try {
-    return { data: await fetchContributions(token) };
+    const data = await fetchContributions(token);
+    fs.writeFile(store("cache.json"), JSON.stringify(data), () => {});
+    return { data };
   } catch (e) {
+    token = null;
     const err = /** @type {Error & { auth?: boolean }} */ (e);
     return { error: err.auth ? "signin" : err.message };
   }
@@ -157,6 +182,7 @@ ipcMain.on("menu", () => appMenu().popup({ window: win }));
 ipcMain.on("quit", () => app.quit());
 
 ipcMain.on("hover", (_e, inside) => {
+  if (e2eOut) return;
   win.setIgnoreMouseEvents(!inside, { forward: true });
   if (inside) win.focus();
 });
@@ -183,6 +209,8 @@ app.whenReady().then(() => {
   createWindow();
   if (!shotPath) buildTray();
   win.webContents.once("did-finish-load", () => {
+    const cached = cachedContributions();
+    if (cached) win.webContents.send("contributions", { data: cached });
     pushContributions();
     pushTime();
   });

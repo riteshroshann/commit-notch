@@ -5,6 +5,9 @@ const { flattenWeeks, monthLabels, summary } = require("./stats.js");
 const QUERY = `query {
   viewer {
     login name avatarUrl(size: 96)
+    repositories(first: 4, orderBy: { field: PUSHED_AT, direction: DESC }, ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
+      nodes { nameWithOwner isPrivate pushedAt primaryLanguage { name color } }
+    }
     contributionsCollection {
       totalCommitContributions totalPullRequestContributions
       totalIssueContributions totalPullRequestReviewContributions
@@ -54,6 +57,14 @@ async function fetchContributions(token) {
       issues: c.totalIssueContributions,
       reviews: c.totalPullRequestReviewContributions,
     },
+    latest: v.repositories.nodes.map(
+      /** @param {any} r */ (r) => ({
+        name: r.nameWithOwner,
+        private: r.isPrivate,
+        language: r.primaryLanguage,
+        pushedAt: r.pushedAt,
+      }),
+    ),
     repos: c.commitContributionsByRepository.map(
       /** @param {any} r */ (r) => ({
         name: r.repository.nameWithOwner,

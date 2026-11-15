@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Commit Notch developer docs</title>
+<meta name="description" content="How Commit Notch is built: architecture, local setup, data flow, IPC, testing and releasing.">
+<meta name="author" content="Ritesh Roshan">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://riteshroshann.github.io/commit-notch/developers.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:title" content="Commit Notch developer docs">
+<meta property="og:image" content="https://riteshroshann.github.io/commit-notch/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="docs">
+  <nav class="side" aria-label="Sections">
+    <a class="home" href="./">Commit Notch</a>
+    <a href="#start">Run it locally</a>
+    <a href="#layout">Project layout</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#data">GitHub data</a>
+    <a href="#clock">Atomic clock</a>
+    <a href="#motion">Motion and sound</a>
+    <a href="#ipc">IPC</a>
+    <a href="#settings">Settings and storage</a>
+    <a href="#testing">Testing</a>
+    <a href="#release">Releasing</a>
+    <a href="#contributing">Contributing</a>
+  </nav>
+
+  <main class="doc">
+    <h1>Developer docs</h1>
+    <p class="dim">Commit Notch is a small Electron app: one transparent window, plain JavaScript, no framework and no build step for the UI. Everything below is enough to change any part of it. <a class="edit" href="https://github.com/riteshroshann/commit-notch/edit/main/docs/developers.html">Edit this page on GitHub</a></p>
+
+    <section id="start">
+      <h2>Run it locally</h2>
+      <p>You need <a href="https://bun.sh">Bun</a> and, for the task shortcuts, <a href="https://github.com/casey/just">just</a>. Node isn't required: packaging runs on the Node that ships inside Electron.</p>
+<pre><code>git clone https://github.com/riteshroshann/commit-notch
+cd commit-notch
+bun install
+just dev</code></pre>
+      <p>If VS Code launched your terminal, it sets <code>ELECTRON_RUN_AS_NODE</code>, which makes Electron behave like plain Node. <code>just dev</code> clears it for you. Running <code>electron.exe .</code> by hand needs the same.</p>
+      <div class="table"><table>
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td><code>just dev</code></td><td>Runs the widget from source.</td></tr>
+        <tr><td><code>just check</code></td><td>Biome lint and format check, TypeScript over the JSDoc types, unit tests.</td></tr>
+        <tr><td><code>just e2e</code></td><td>Drives the real window with clicks, keys and wheel events, then checks DOM state and pixels.</td></tr>
+        <tr><td><code>just fmt</code></td><td>Fixes formatting and autofixable lint.</td></tr>
+        <tr><td><code>just dist</code></td><td>Builds <code>dist/Commit-Notch-win.exe</code> (installer) and <code>dist/Commit-Notch-win.zip</code> (portable).</td></tr>
+      </table></div>
+    </section>
+
+    <section id="layout">
+      <h2>Project layout</h2>
+      <div class="table"><table>
+        <tr><td><code>src/main.js</code></td><td>Main process: window, tray and right-click menu, IPC, settings, token storage, cache, refresh timers.</td></tr>
+        <tr><td><code>src/github.js</code></td><td>One GraphQL query for the signed-in user, and the token lookup through the GitHub CLI.</td></tr>
+        <tr><td><code>src/stats.js</code></td><td>Pure functions over the contribution calendar: streaks, month labels, the seven-day summary. Unit tested.</td></tr>
+        <tr><td><code>src/ntp.js</code></td><td>A minimal SNTP client.</td></tr>
+        <tr><td><code>src/preload.js</code></td><td>The <code>window.notch</code> bridge, the only API the page can reach.</td></tr>
+        <tr><td><code>src/renderer/</code></td><td>The islands: <code>index.html</code>, <code>style.css</code>, <code>app.js</code> (wiring), <code>motion.js</code> (springs), <code>sound.js</code> (synthesised sounds).</td></tr>
+        <tr><td><code>test/</code></td><td><code>stats.test.js</code> for Bun, <code>e2e.js</code> for the end-to-end run.</td></tr>
+        <tr><td><code>docs/</code></td><td>This site. <code>docs/demo/</code> is a copy of the renderer, which falls back to sample data when there's no Electron bridge.</td></tr>
+      </table></div>
+    </section>
+
+    <section id="architecture">
+      <h2>Architecture</h2>
+      <p>A frameless, transparent, always-on-top window 1240 px wide sits at the top centre of the primary display. It ignores the mouse everywhere except over an island: the page reports hover changes over IPC, and the main process flips <code>setIgnoreMouseEvents</code>. That's how clicks fall through to whatever is underneath.</p>
+      <p>On launch, the main process sends the cached data from the last run straight away, so the islands paint instantly. Then it fetches fresh data. Contributions refresh every 15 minutes and the clock resyncs every 10. Losing focus closes any open panel. A second launch opens the panel in the running instance instead of starting another one.</p>
+    </section>
+
+    <section id="data">
+      <h2>GitHub data</h2>
+      <p>One GraphQL call to <code>viewer</code> returns everything: <code>contributionsCollection</code> (calendar, totals and the top four repos by commits) and the four most recently pushed repositories. Contributions to private repos are included for your own account. Your profile setting decides whether they also show on github.com.</p>
+      <p>The token comes from <code>gh auth token</code> if the GitHub CLI is signed in. Otherwise it's the one you pasted, which is encrypted with Electron's <code>safeStorage</code> (Windows DPAPI). A classic token needs the <code>repo</code> and <code>read:user</code> scopes. A 401 clears the remembered token and shows the sign-in form.</p>
+    </section>
+
+    <section id="clock">
+      <h2>Atomic clock</h2>
+      <p><code>ntp.js</code> sends four SNTP requests to <code>time.cloudflare.com</code> over UDP 123, keeps the one with the shortest round trip, and computes the offset as <code>((t1 − t0) + (t2 − t3)) / 2</code>. The page adds that offset to <code>Date.now()</code> and schedules each tick on the true second boundary. If the server can't be reached, the dot goes grey and the clock falls back to the PC's own time.</p>
+    </section>
+
+    <section id="motion">
+      <h2>Motion and sound</h2>
+      <p>Whether something is visible is always decided by a CSS class with a transition, never by an animation that holds its end state. Interrupt it however you like and it settles on the current state. Script animates only geometry: an island's width and height when it opens, starting from wherever it is right now.</p>
+      <p>The springs are real. <code>Motion.spring(stiffness, damping)</code> simulates a damped spring and samples it into a CSS <code>linear()</code> easing, exposed as <code>--spring</code> for the stylesheet. Opening uses a bouncier spring than closing.</p>
+      <p>Every sound is generated live with Web Audio: sine tones with pitch glides, plus a short band-passed noise burst for the tap. There are no audio files. Edit <code>sound.js</code> to retune them, or turn them off from the menu.</p>
+    </section>
+
+    <section id="ipc">
+      <h2>IPC</h2>
+      <div class="table"><table>
+        <tr><th>Page calls</th><th>Main sends</th></tr>
+        <tr><td><code>init()</code> returns settings<br><code>hover(inside)</code><br><code>refresh()</code><br><code>saveToken(token)</code><br><code>menu()</code><br><code>quit()</code></td>
+            <td><code>contributions</code> with <code>{ data }</code> or <code>{ error }</code><br><code>time</code> with <code>{ offset, rtt, host }</code> or <code>{ error }</code><br><code>settings</code><br><code>collapse</code><br><code>open</code> with an island id</td></tr>
+      </table></div>
+    </section>
+
+    <section id="settings">
+      <h2>Settings and storage</h2>
+      <p>Everything lives in <code>%APPDATA%\Commit Notch\</code>: <code>settings.json</code> (sounds on or off, and the clock's cities), <code>token.bin</code> (encrypted) and <code>cache.json</code> (the last good data). To change the cities, edit the file and restart:</p>
+<pre><code>{
+  "sound": true,
+  "cities": [["San Francisco", "America/Los_Angeles"], ["London", "Europe/London"]]
+}</code></pre>
+    </section>
+
+    <section id="testing">
+      <h2>Testing</h2>
+      <p><code>just check</code> runs the unit tests for the streak and calendar logic. <code>just e2e</code> launches the real app and puts it through 14 scenarios: opening, bursts of fast and held arrow keys, wheel bursts, closing and reopening mid-transition, switching islands, rapid clicks and focus loss. After each one it checks the DOM state and measures the pixels inside the open island, so a blank panel fails the run. Screenshots and a report land in the folder you pass.</p>
+<pre><code>electron . --e2e=out/e2e
+electron . --shot=out/panel.png --open=gh --page=2</code></pre>
+      <p><code>--shot</code> opens an island (and optionally a page), saves a screenshot and quits. It's handy for checking visual changes.</p>
+    </section>
+
+    <section id="release">
+      <h2>Releasing</h2>
+      <p>Bump <code>version</code> in <code>package.json</code>, run <code>just check</code> and <code>just e2e</code>, then <code>just dist</code>. Upload both files to a GitHub release:</p>
+<pre><code>gh release create v1.2.0 dist/Commit-Notch-win.exe dist/Commit-Notch-win.zip --title "Commit Notch 1.2.0" --notes "..."</code></pre>
+      <p>The file names don't include the version, so the download buttons on this site, which point at <code>releases/latest/download/</code>, always give people the newest build.</p>
+    </section>
+
+    <section id="contributing">
+      <h2>Contributing</h2>
+      <p>Issues and pull requests are welcome. Keep the bar: <code>just check</code> and <code>just e2e</code> pass, no new runtime dependencies without a good reason, no sound or font files, and it should still feel like hardware. Springy, quiet, never in the way.</p>
+    </section>
+
+    <footer>
+      <span>Engineered by Ritesh Roshan</span>
+      <span><a href="./">Home</a> · <a href="https://github.com/riteshroshann/commit-notch">GitHub</a></span>
+    </footer>
+  </main>
+</div>
+<script>
+  for (const pre of document.querySelectorAll("pre")) {
+    const b = document.createElement("button");
+    b.className = "copy";
+    b.type = "button";
+    b.textContent = "Copy";
+    b.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(pre.innerText.replace(/Copy(ed)?$/, "").trim());
+      b.textContent = "Copied";
+      setTimeout(() => (b.textContent = "Copy"), 1400);
+    });
+    pre.append(b);
+  }
+  const links = [...document.querySelectorAll(".side a[href^='#']")];
+  const io = new IntersectionObserver((es) => {
+    for (const e of es) if (e.isIntersecting) links.forEach((a) => a.classList.toggle("on", a.hash === `#${e.target.id}`));
+  }, { rootMargin: "-30% 0px -60% 0px" });
+  document.querySelectorAll(".doc section").forEach((s) => io.observe(s));
+</script>
+</body>
+</html>

@@ -1,25 +1,33 @@
 # Commit Notch
 
-Your GitHub year and an atomic world clock, hanging from the top of your Windows screen. Three small black islands sit at the top edge. The left one shows what you've shipped today and a seven-day sparkline. The centre one springs open into your contribution graph, private repos included, plus your top repos and a breakdown of commits, pull requests, reviews and issues. The right one is a clock synced to atomic time, with four cities beside it. Every open, close and page turn has its own small synthesised sound.
+Your GitHub year, hanging off the top of your screen like it pays rent there.
 
-## Use it
+Three tiny black islands sit on the top edge of Windows. The left one shows your last seven days and how much you've shipped today. The middle one springs open into your whole year: the contribution graph, your latest pushes, the repos you lived in, and the year in four numbers. Private repos count, because your best work is usually the stuff nobody can see. The right one is a clock synced to actual atomic time, so you'll know exactly how late it is to still be committing.
 
-Download `Commit Notch-1.0.0-win.exe` from Releases and run it. Or unzip `Commit Notch-1.0.0-win.zip` anywhere and run `Commit Notch.exe`. Windows SmartScreen may warn on first launch because the app isn't code-signed: click **More info**, then **Run anyway**.
+It bloops when it opens. It boops when it closes. Nobody asked for that, and it's the best part.
 
-It signs in through the GitHub CLI if you've run `gh auth login`. Otherwise, paste a classic token with `repo` and `read:user` scopes into the panel. It's stored encrypted with Windows DPAPI. For private work to count, turn on **Include private contributions on my profile** in your GitHub settings.
+**[Download for Windows](https://github.com/riteshroshann/commit-notch/releases/latest/download/Commit-Notch-win.exe)** · [Portable zip](https://github.com/riteshroshann/commit-notch/releases/latest/download/Commit-Notch-win.zip) · [Website](https://riteshroshann.github.io/commit-notch/) · [Developer docs](https://riteshroshann.github.io/commit-notch/developers.html)
 
-Right-click the tray icon to refresh, mute sounds, toggle open-at-login or sign out. To change the cities, edit `%APPDATA%\Commit Notch\settings.json`.
+## Sixty-second setup
 
-## Build it
+1. Run the installer. Windows will clutch its pearls ("Windows protected your PC") because the app isn't code-signed. Click **More info**, then **Run anyway**.
+2. Already use the GitHub CLI? You're done, it finds your login. Otherwise, click the middle island and paste a classic token with `repo` and `read:user` scopes.
+3. Want private work in the graph? On GitHub, turn on **Include private contributions on my profile**.
+
+Click the middle island to open it, then scroll or use the arrow keys to flip pages. Right-click any island for settings, or hit the power button to quit.
+
+## For the curious
 
 ```
 bun install
-just dev     # run
-just dist    # installer + portable zip in dist/
+just dev     # run it
+just check   # lint, types, unit tests
+just e2e     # the robot that clicks everything really fast
+just dist    # installer + zip
 ```
 
-## How it works
+It's plain JavaScript in one transparent Electron window. Springs are real physics baked into CSS, sounds are synthesised live (zero audio files), and the clock speaks NTP to Cloudflare. The [developer docs](https://riteshroshann.github.io/commit-notch/developers.html) explain every piece.
 
-A transparent, always-on-top Electron window spans the top-centre of the screen and ignores the mouse everywhere except over an island. GitHub data comes from one GraphQL call to `contributionsCollection`, refreshed every 15 minutes. The clock runs an SNTP exchange with `time.cloudflare.com` every 10 minutes and applies the measured offset. Motion uses real spring physics baked into CSS `linear()` easings. Sounds are generated live with Web Audio, so the app ships no audio files.
+Your token stays on your machine, encrypted. The app talks to GitHub and a time server, and that's the whole guest list.
 
-Engineered by Ritesh Roshan.
+MIT licensed. Engineered by Ritesh Roshan.

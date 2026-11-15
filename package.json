@@ -1,7 +1,7 @@
 {
   "name": "commit-notch",
   "productName": "Commit Notch",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Your GitHub contributions and an atomic world clock, hanging from the top of your screen.",
   "author": "Ritesh Roshan <riteshroshansahoo01@gmail.com>",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "files": ["src/**/*", "build/icon.png", "package.json"],
     "win": {
       "target": ["nsis", "zip"],
-      "artifactName": "${productName}-${version}-${os}.${ext}"
+      "artifactName": "Commit-Notch-${os}.${ext}"
     },
     "nsis": {
       "oneClick": true,

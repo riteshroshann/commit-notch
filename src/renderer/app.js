@@ -57,6 +57,32 @@ function sampleData() {
     today: 8,
     week: days.slice(-7).map((d) => d.count),
     kinds: { commits: 812, pullRequests: 64, issues: 23, reviews: 41 },
+    latest: [
+      {
+        name: "riteshroshann/commit-notch",
+        private: false,
+        language: { name: "JavaScript", color: "#f1e05a" },
+        pushedAt: new Date(Date.now() - 12 * 60e3).toISOString(),
+      },
+      {
+        name: "riteshroshann/neuralniti-core",
+        private: true,
+        language: { name: "TypeScript", color: "#3178c6" },
+        pushedAt: new Date(Date.now() - 5 * 36e5).toISOString(),
+      },
+      {
+        name: "riteshroshann/onestyle",
+        private: false,
+        language: { name: "TypeScript", color: "#3178c6" },
+        pushedAt: new Date(Date.now() - 26 * 36e5).toISOString(),
+      },
+      {
+        name: "riteshroshann/tadashi",
+        private: true,
+        language: { name: "Python", color: "#3572A5" },
+        pushedAt: new Date(Date.now() - 4 * 864e5).toISOString(),
+      },
+    ],
     repos: [
       {
         name: "riteshroshann/commit-notch",
@@ -169,13 +195,14 @@ function goPage(i) {
 
 /** @type {string} */
 let streakText = "";
-const FOOTERS = [null, "Most commits this year", "This year at a glance"];
+const FOOTERS = [null, "Latest pushes", "Most commits this year", "This year at a glance"];
 
 function enterPage() {
   $("streak").textContent = FOOTERS[pageIndex] ?? streakText;
   $("legend").style.visibility = pageIndex === 0 ? "visible" : "hidden";
-  if (pageIndex === 1) Motion.grow([...document.querySelectorAll(".bar-fill")], "scaleX");
-  if (pageIndex === 2) Motion.grow([...document.querySelectorAll(".kind b")], "scale");
+  if (pageIndex === 1) Motion.grow([...document.querySelectorAll("#latest .bar-fill")], "scaleX");
+  if (pageIndex === 2) Motion.grow([...document.querySelectorAll("#repos .bar-fill")], "scaleX");
+  if (pageIndex === 3) Motion.grow([...document.querySelectorAll(".kind b")], "scale");
 }
 
 $("dots").addEventListener("click", (e) => {
@@ -189,7 +216,7 @@ $("pages").addEventListener("wheel", (e) => {
   wheelLock = now;
   goPage(pageIndex + Math.sign(e.deltaY || e.deltaX));
 });
-pages.forEach((p, i) => (p.style.visibility = i === 0 ? "visible" : "hidden"));
+pages[0]?.classList.add("active");
 document.querySelector(".dots b")?.classList.add("on");
 
 const fmt = new Intl.NumberFormat("en");
@@ -204,11 +231,9 @@ function renderContributions(d) {
   $("chipStreak").textContent = `${d.current} day streak`;
   $("todayCount").textContent = String(d.today);
 
-  const max = Math.max(1, ...d.week);
-  $("spark").innerHTML = d.week
-    .map(
-      (/** @type {number} */ n) => `<i class="${n ? "" : "zero"}" style="height:${Math.max(2, (n / max) * 14)}px"></i>`,
-    )
+  const last7 = /** @type {{ level: number, count: number, date: string }[]} */ (d.days).slice(-7);
+  $("week").innerHTML = last7
+    .map((x) => `<i class="${x.level ? `l${x.level}` : ""}" title="${x.count} on ${x.date}"></i>`)
     .join("");
 
   const days = /** @type {{ date: string, count: number, level: number }[]} */ (d.days);
@@ -218,6 +243,18 @@ function renderContributions(d) {
   const months = d.months.length ? d.months : labelsFor(days);
   $("months").innerHTML = months
     .map((/** @type {{label: string, col: number}} */ m) => `<span style="left:${m.col * 10.8}px">${m.label}</span>`)
+    .join("");
+
+  $("latest").innerHTML = (d.latest ?? [])
+    .map(
+      (/** @type {any} */ r) => `<div class="repo">
+        <span class="nm">${r.name.split("/")[1]}</span>
+        <b class="tnum">${ago(r.pushedAt)}</b>
+        <span class="meta"><i class="lang" style="background:${r.language?.color ?? "#8e8e93"}"></i>${r.language?.name ?? "Other"}${r.private ? " · Private" : ""}</span>
+        <span class="unit">${r.name.split("/")[0] === d.login ? "pushed" : r.name.split("/")[0]}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${freshness(r.pushedAt, d.latest)}%"></div></div>
+      </div>`,
+    )
     .join("");
 
   const top = Math.max(1, ...d.repos.map((/** @type {any} */ r) => r.commits));
@@ -263,7 +300,7 @@ bridge.on("contributions", (/** @type {any} */ res) => {
   signin.hidden = res.error !== "signin";
   if (res.data) renderContributions(res.data);
   else if (res.error === "signin") $("chipStreak").textContent = "Sign in";
-  else $("chipStreak").textContent = "Offline";
+  else if (!$("grid").childElementCount) $("chipStreak").textContent = "Offline";
 });
 
 $("signin").addEventListener("submit", async (e) => {
@@ -338,7 +375,7 @@ function tick() {
 bridge.init().then((/** @type {any} */ s) => {
   Sound.setEnabled(s.sound);
   cities = s.cities;
-  tick();
+
   const shot = new URLSearchParams(location.search).get("shot");
   if (shot) setTimeout(() => setOpen($(shot)), 600);
   const page = Number(new URLSearchParams(location.search).get("page") ?? 0);
@@ -373,4 +410,30 @@ function setAvatar(d) {
     av.classList.add("has-img");
   };
   img.src = d.avatar;
+}
+
+tick();
+Motion.intro([...document.querySelectorAll(".island")]);
+
+/** "just now", "3h ago", "2d ago", or a date for anything older than a month. @param {string} iso */
+function ago(iso) {
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 90) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  if (s < 86400 * 30) return `${Math.round(s / 86400)}d ago`;
+  return new Date(iso).toLocaleDateString("en", { month: "short", day: "numeric" });
+}
+
+/** Bar length for a push: the newest is full, older ones shrink with age. @param {string} iso @param {{ pushedAt: string }[]} all */
+function freshness(iso, all) {
+  const age = (/** @type {string} */ t) => Date.now() - new Date(t).getTime();
+  const oldest = Math.max(1, ...all.map((r) => age(r.pushedAt)));
+  return Math.round(Math.max(0.08, 1 - age(iso) / (oldest * 1.15)) * 100);
+}
+
+// Website demo: outline the islands against the page and open the year after a beat.
+if (new URLSearchParams(location.search).has("demo")) {
+  document.body.classList.add("demo");
+  setTimeout(() => !openIsland && setOpen($("gh")), 900);
 }
