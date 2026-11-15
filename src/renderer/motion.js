@@ -19,7 +19,7 @@ const Motion = (() => {
       x += v * dt;
       t += dt;
       pts.push(x);
-      still = Math.abs(x - 1) < 0.001 && Math.abs(v) < 0.01 ? still + 1 : 0;
+      still = Math.abs(x - 1) < 0.004 && Math.abs(v) < 0.05 ? still + 1 : 0;
     }
     const step = Math.max(1, Math.floor(pts.length / 60));
     const sampled = pts.filter((_, i) => i % step === 0);
@@ -27,9 +27,9 @@ const Motion = (() => {
     return { easing: `linear(0, ${sampled.map((p) => p.toFixed(4)).join(", ")})`, duration: Math.round(t * 1000) };
   }
 
-  const bouncy = spring(320, 22);
-  const snappy = spring(460, 38);
-  const soft = spring(200, 26);
+  const bouncy = spring(420, 30);
+  const snappy = spring(560, 47);
+  const soft = spring(300, 32);
   const root = document.documentElement.style;
   root.setProperty("--spring", soft.easing);
   root.setProperty("--spring-ms", `${soft.duration}ms`);

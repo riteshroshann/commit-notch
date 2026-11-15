@@ -54,6 +54,7 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32), inset 0 -1px 0 var(--hair);
   transform-origin: 50% 0;
   will-change: transform;
+  transition: border-radius 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .island:focus-visible {
   outline: 1.5px solid rgba(79, 195, 232, 0.45);
@@ -64,61 +65,61 @@ body {
   cursor: default;
 }
 
-/* Both layers always exist. The resting one sits absolute so the island sizes to the active one.
-   Every visible/hidden decision is a class, so transitions always settle on the current state. */
+/* Both layers always exist. The island is a centred column, so content stays put while the
+   island grows around it. The resting layer sits absolute and centred. Visibility is a class. */
+.island {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 .island > .layer {
-  transition: opacity 160ms ease, transform var(--spring-ms, 500ms) var(--spring, ease), visibility 0s linear 220ms;
+  flex: none;
+  transition: opacity 140ms ease-out, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 160ms;
 }
 .island > .full,
 .island.open > .chip {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 50%;
+  translate: -50% 0;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-}
-.island > .full {
-  transform: scale(0.94) translateY(-8px);
-  transform-origin: 50% 0;
-}
-.island.open > .chip {
-  transform: scale(1.1);
+  transform: translateY(-4px);
 }
 .island.open > .full,
 .island > .chip {
   position: relative;
+  left: auto;
+  translate: none;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
   transform: none;
-  transition: opacity 260ms ease 70ms, transform var(--spring-ms, 500ms) var(--spring, ease) 40ms, visibility 0s;
+  transition: opacity 220ms ease-out 50ms, transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1) 50ms, visibility 0s;
 }
 
-/* panel contents arrive one after another */
+/* panel rows fade up in a quick cascade */
 .full > * {
-  transition: opacity 240ms ease, transform var(--spring-ms, 500ms) var(--spring, ease);
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(4px);
+  transition: opacity 200ms ease-out, transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .island.open .full > * {
   opacity: 1;
   transform: none;
 }
-.island.open .full > :nth-child(1) {
-  transition-delay: 90ms;
-}
 .island.open .full > :nth-child(2) {
-  transition-delay: 125ms;
+  transition-delay: 30ms;
 }
 .island.open .full > :nth-child(3) {
-  transition-delay: 160ms;
+  transition-delay: 60ms;
 }
 .island.open .full > :nth-child(4) {
-  transition-delay: 195ms;
+  transition-delay: 90ms;
 }
 .island.open .full > :nth-child(5) {
-  transition-delay: 230ms;
+  transition-delay: 110ms;
 }
 
 .chip {
