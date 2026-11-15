@@ -1,0 +1,43 @@
+{
+  "name": "commit-notch",
+  "productName": "Commit Notch",
+  "version": "1.0.0",
+  "description": "Your GitHub contributions and an atomic world clock, hanging from the top of your screen.",
+  "author": "Ritesh Roshan <riteshroshansahoo01@gmail.com>",
+  "license": "MIT",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron scripts/dist.js"
+  },
+  "build": {
+    "appId": "com.riteshroshann.commitnotch",
+    "productName": "Commit Notch",
+    "icon": "build/icon.png",
+    "files": ["src/**/*", "build/icon.png", "package.json"],
+    "win": {
+      "target": ["nsis", "zip"],
+      "artifactName": "${productName}-${version}-${os}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "riteshroshann",
+        "repo": "commit-notch"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/bun": "1.1.13",
+    "@types/node": "22.9.0",
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "typescript": "5.6.3"
+  }
+}
