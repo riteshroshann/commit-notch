@@ -1,0 +1,57 @@
+# Push a tag like v1.4.0 and this builds, signs and drafts the release. Publishing the draft is
+# what ships it: installed apps only see published releases. See RELEASING.md.
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Tag matches package.json
+        shell: bash
+        run: |
+          want="v$(node -p "require('./package.json').version")"
+          [ "$want" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME but package.json says $want"; exit 1; }
+
+      - name: Check
+        run: |
+          bun x biome check .
+          bun x tsc --noEmit
+          bun test
+
+      - name: Build, sign and draft the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Code signing. Leave these secrets unset and the build is simply unsigned.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: node node_modules/electron-builder/cli.js --win nsis zip --publish always
+
+      - name: Release notes from CHANGELOG.md
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$0 ~ "^## "v"( |$)" {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+          gh release edit "$GITHUB_REF_NAME" --title "Commit Notch $version" --notes-file notes.md

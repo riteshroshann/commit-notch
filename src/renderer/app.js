@@ -321,6 +321,9 @@ bridge.on("contributions", (/** @type {any} */ res) => {
       "streak",
     ])
       $(id).replaceChildren();
+    $("av").classList.remove("has-img");
+    shownAvatar = null;
+    clearTimeout(avatarRetry);
     $("chipStreak").textContent = "Connect GitHub";
   } else if (!$("grid").childElementCount) {
     $("chipStreak").textContent = "Offline";
@@ -407,17 +410,37 @@ for (const el of /** @type {HTMLElement[]} */ ([...document.querySelectorAll(".i
 if (new URLSearchParams(location.search).get("shot"))
   document.body.style.background = "linear-gradient(#4f93db, #9cc6ee)";
 
-/** Profile photo when GitHub gives one; the initial stays as the fallback. @param {any} d */
-function setAvatar(d) {
+/** @type {string | null} the photo URL currently on screen */
+let shownAvatar = null;
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let avatarRetry;
+
+/**
+ * Profile photo when GitHub gives one; the initial is only the fallback. A refresh never wipes a
+ * photo that's already showing, and a photo that fails to load (asleep, offline) is retried.
+ * @param {any} d @param {number} [attempt]
+ */
+function setAvatar(d, attempt = 0) {
   const av = $("av");
-  av.textContent = d.name.charAt(0).toUpperCase();
-  av.classList.remove("has-img");
-  if (!d.avatar) return;
+  clearTimeout(avatarRetry);
+  if (!d.avatar) {
+    shownAvatar = null;
+    av.classList.remove("has-img");
+    av.textContent = d.name.charAt(0).toUpperCase();
+    return;
+  }
+  if (d.avatar === shownAvatar && av.classList.contains("has-img")) return;
+  if (!av.classList.contains("has-img")) av.textContent = d.name.charAt(0).toUpperCase();
   const img = new Image();
   img.alt = "";
   img.onload = () => {
+    if (signedOut) return;
+    shownAvatar = d.avatar;
     av.replaceChildren(img);
     av.classList.add("has-img");
+  };
+  img.onerror = () => {
+    if (attempt < 5) avatarRetry = setTimeout(() => setAvatar(d, attempt + 1), 5000 * 2 ** attempt);
   };
   img.src = d.avatar;
 }

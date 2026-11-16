@@ -5,6 +5,7 @@ const path = require("node:path");
 const { ghCliToken, fetchContributions } = require("./github.js");
 const { requestCode, waitForToken } = require("./auth.js");
 const ntp = require("./ntp.js");
+const updater = require("./updater.js");
 const pkg = require("../package.json");
 
 const WIDTH = 1240;
@@ -51,6 +52,27 @@ function loadSettings() {
 const firstRun = !fs.existsSync(path.join(app.getPath("userData"), "settings.json"));
 const settings = loadSettings();
 const saveSettings = () => fs.writeFileSync(store("settings.json"), JSON.stringify(settings, null, 2));
+
+// ---------- log ----------
+// One small file in the profile folder, so a crash becomes a line someone can send instead of a dialog.
+
+const LOG_MAX = 512 * 1024;
+
+/** @param {"info" | "warn" | "error"} level @param {...unknown} parts */
+function log(level, ...parts) {
+  try {
+    const file = store("main.log");
+    if (fs.existsSync(file) && fs.statSync(file).size > LOG_MAX) fs.renameSync(file, store("main.old.log"));
+    const text = parts.map((p) => (p instanceof Error ? (p.stack ?? p.message) : String(p))).join(" ");
+    fs.appendFileSync(file, `${new Date().toISOString()} ${level} ${text}\n`);
+  } catch {
+    // logging must never be the thing that breaks the app
+  }
+}
+if (!tooling) {
+  process.on("uncaughtException", (e) => log("error", "uncaught", e));
+  process.on("unhandledRejection", (e) => log("error", "unhandled rejection", e));
+}
 
 // ---------- who is signed in ----------
 // `epoch` changes on every sign in and sign out; work that started under an older epoch is dropped.
@@ -100,7 +122,7 @@ function signOut() {
   for (const f of ["token.bin", "cache.json"]) fs.rmSync(store(f), { force: true });
   settings.useGhCli = false;
   saveSettings();
-  win?.webContents.send("contributions", { error: "signin" });
+  send("contributions", { error: "signin" });
 }
 
 // ---------- data ----------
@@ -132,15 +154,15 @@ async function loadContributions() {
 
 async function pushContributions() {
   const res = await loadContributions();
-  if (!res.stale) win?.webContents.send("contributions", res);
+  if (!res.stale) send("contributions", res);
   return res;
 }
 
 async function pushTime() {
   try {
-    win?.webContents.send("time", await ntp.sync());
+    send("time", await ntp.sync());
   } catch (e) {
-    win?.webContents.send("time", { error: /** @type {Error} */ (e).message });
+    send("time", { error: /** @type {Error} */ (e).message });
   }
 }
 
@@ -165,14 +187,36 @@ function safeUrl(url) {
 
 // ---------- the islands window ----------
 
-/** @type {BrowserWindow} */
-let win;
+/** @type {BrowserWindow | null} */
+let win = null;
 /** @type {Tray} */
 let tray;
+let quitting = false;
+app.on("before-quit", () => {
+  quitting = true;
+});
+
+/** @param {BrowserWindow | null} w @returns {w is BrowserWindow} */
+const alive = (w) => w !== null && !w.isDestroyed();
+
+/** Talk to the islands; a window that's gone (quitting, closed) is skipped, never thrown on. */
+function send(/** @type {string} */ channel, /** @type {any} */ value) {
+  if (alive(win)) win.webContents.send(channel, value);
+}
+
+/** Open the contributions island, bringing the window back first if something closed it. */
+function showIslands() {
+  if (alive(win)) return send("open", "gh");
+  createWindow().webContents.once("did-finish-load", () => {
+    pushContributions();
+    pushTime();
+    setTimeout(() => send("open", "gh"), 450);
+  });
+}
 
 function createWindow() {
   const { workArea } = screen.getPrimaryDisplay();
-  win = new BrowserWindow({
+  const w = new BrowserWindow({
     width: WIDTH,
     height: HEIGHT,
     x: Math.round(workArea.x + (workArea.width - WIDTH) / 2),
@@ -187,29 +231,45 @@ function createWindow() {
     alwaysOnTop: true,
     webPreferences: { preload: path.join(__dirname, "preload.js"), backgroundThrottling: false },
   });
-  lockDown(win);
-  win.setAlwaysOnTop(true, "pop-up-menu");
-  win.setIgnoreMouseEvents(true, { forward: true });
-  win.loadFile(path.join(rendererDir, "index.html"), {
+  win = w;
+  lockDown(w);
+  w.setAlwaysOnTop(true, "pop-up-menu");
+  w.setIgnoreMouseEvents(true, { forward: true });
+  // Alt+F4 on a focused island used to destroy the window while the app lived on in the tray
+  w.on("close", (e) => {
+    if (!quitting && !tooling) e.preventDefault();
+  });
+  w.on("session-end", () => {
+    quitting = true;
+  });
+  w.on("closed", () => {
+    if (win === w) win = null;
+  });
+  w.webContents.on("render-process-gone", (_e, details) => {
+    log("error", "renderer gone", details.reason);
+    if (!quitting && details.reason !== "clean-exit") setTimeout(() => alive(w) && w.reload(), 1000);
+  });
+  w.loadFile(path.join(rendererDir, "index.html"), {
     query: shotPath ? { shot: arg("open") ?? "gh", page: arg("page") ?? "0" } : {},
   });
-  win.once("ready-to-show", () => win.showInactive());
+  w.once("ready-to-show", () => w.showInactive());
   if (e2eOut) {
     // real mouse passes through; the suite drives the page with synthetic events only
-    win.webContents.once("did-finish-load", async () => {
-      const failed = await require("../test/e2e.js")(win, e2eOut);
+    w.webContents.once("did-finish-load", async () => {
+      const failed = await require("../test/e2e.js")(w, e2eOut);
       app.exit(failed ? 1 : 0);
     });
   }
-  win.on("blur", () => !tooling && win.webContents.send("collapse"));
+  w.on("blur", () => !tooling && send("collapse"));
   if (shotPath) {
-    win.webContents.once("did-finish-load", () =>
+    w.webContents.once("did-finish-load", () =>
       setTimeout(async () => {
-        fs.writeFileSync(shotPath, (await win.webContents.capturePage()).toPNG());
+        fs.writeFileSync(shotPath, (await w.webContents.capturePage()).toPNG());
         app.quit();
       }, 2500),
     );
   }
+  return w;
 }
 
 // ---------- the setup window ----------
@@ -220,7 +280,7 @@ let setup = null;
 let signIn = null;
 
 function openSetup(/** @type {Record<string, string>} */ query = {}) {
-  if (setup) {
+  if (setup && !setup.isDestroyed()) {
     setup.focus();
     return setup;
   }
@@ -250,7 +310,9 @@ function openSetup(/** @type {Record<string, string>} */ query = {}) {
   return setup;
 }
 
-const tell = (/** @type {string} */ channel, /** @type {any} */ value) => setup?.webContents.send(channel, value);
+const tell = (/** @type {string} */ channel, /** @type {any} */ value) => {
+  if (setup && !setup.isDestroyed()) setup.webContents.send(channel, value);
+};
 
 /**
  * Verify a token before it replaces anything, then make it the signed-in account.
@@ -273,7 +335,7 @@ async function finishSignIn(t, signal) {
   epoch++;
   token = t;
   writeCache(t, data);
-  win?.webContents.send("contributions", { data });
+  send("contributions", { data });
   tell("setup:done", { name: data.name, login: data.login, avatar: data.avatar });
   return { ok: true };
 }
@@ -347,7 +409,7 @@ ipcMain.on("setup:open", (_e, url) => safeUrl(url) && shell.openExternal(url));
 ipcMain.on("setup:finish", (_e, openAtLogin) => {
   app.setLoginItemSettings({ openAtLogin: Boolean(openAtLogin) });
   setup?.close();
-  setTimeout(() => win?.webContents.send("open", "gh"), 450);
+  setTimeout(() => send("open", "gh"), 450);
 });
 ipcMain.on("setup:close", () => setup?.close());
 
@@ -373,7 +435,7 @@ function appMenu() {
       click: (i) => {
         settings.sound = i.checked;
         saveSettings();
-        win.webContents.send("settings", settings);
+        send("settings", settings);
       },
     },
     {
@@ -382,6 +444,7 @@ function appMenu() {
       checked: app.getLoginItemSettings().openAtLogin,
       click: (i) => app.setLoginItemSettings({ openAtLogin: i.checked }),
     },
+    updater.menuItem(),
     { type: "separator" },
     ...(signedIn ? [{ label: "Sign out of GitHub", click: signOut }] : []),
     { label: "Help and privacy", click: () => shell.openExternal(SITE) },
@@ -395,14 +458,14 @@ function buildTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip("Commit Notch");
   tray.on("right-click", () => tray.popUpContextMenu(appMenu()));
-  tray.on("click", () => (token ? win.webContents.send("open", "gh") : openSetup()));
+  tray.on("click", () => (token ? showIslands() : openSetup()));
 }
 
-ipcMain.on("menu", () => appMenu().popup({ window: win }));
+ipcMain.on("menu", () => alive(win) && appMenu().popup({ window: win }));
 ipcMain.on("quit", () => app.quit());
 ipcMain.on("setup", () => openSetup());
 ipcMain.on("hover", (_e, inside) => {
-  if (e2eOut) return;
+  if (e2eOut || !alive(win)) return;
   win.setIgnoreMouseEvents(!inside, { forward: true });
   if (inside) win.focus();
 });
@@ -411,18 +474,22 @@ ipcMain.on("refresh", pushContributions);
 
 // ---------- boot ----------
 
-app.on("second-instance", () => (token ? win?.webContents.send("open", "gh") : openSetup()));
+app.on("second-instance", () => {
+  if (quitting) return; // an installer can start the new app while this one is still closing
+  if (token) showIslands();
+  else openSetup();
+});
 app.on("window-all-closed", () => {}); // closing setup never quits the widget
 
 app.whenReady().then(async () => {
   if (setupShots) return require("../test/setup-shots.js")(openSetup, setupShots);
   if (!tooling && firstRun) saveSettings();
-  createWindow();
+  const first = createWindow();
   if (!tooling) buildTray();
-  win.webContents.once("did-finish-load", async () => {
+  first.webContents.once("did-finish-load", async () => {
     if (await resolveToken()) {
       const cached = cachedContributions();
-      if (cached) win.webContents.send("contributions", { data: cached });
+      if (cached) send("contributions", { data: cached });
     }
     const res = await pushContributions();
     pushTime();
@@ -430,10 +497,12 @@ app.whenReady().then(async () => {
     // signed in through the GitHub CLI already: no setup, so start with Windows by default
     if (firstRun && res.data) app.setLoginItemSettings({ openAtLogin: true });
     if (res.error === "signin") openSetup();
+    updater.start(log);
   });
   setInterval(pushContributions, REFRESH_MS);
   setInterval(pushTime, RESYNC_MS);
   screen.on("display-metrics-changed", () => {
+    if (!alive(win)) return;
     const { workArea } = screen.getPrimaryDisplay();
     win.setPosition(Math.round(workArea.x + (workArea.width - WIDTH) / 2), workArea.y);
   });

@@ -135,8 +135,9 @@ electron . --shot=out/panel.png --open=gh --page=2</code></pre>
 
     <section id="release">
       <h2>Releasing</h2>
-      <p>Bump <code>version</code> in <code>package.json</code>, run <code>just check</code> and <code>just e2e</code>, then <code>just dist</code>. Upload both files to a GitHub release:</p>
-<pre><code>gh release create v1.2.0 dist/Commit-Notch-win.exe dist/Commit-Notch-win.zip --title "Commit Notch 1.2.0" --notes "..."</code></pre>
+      <p>Add a section for the new version to <code>CHANGELOG.md</code>, then run <code>just release</code>. It bumps the version, runs the checks, tags and pushes; the release workflow builds and signs the installer and drafts a GitHub release. Try the draft, then publish it, and every installed copy updates itself. The full process, including signing, is in <code>RELEASING.md</code>.</p>
+<pre><code>just release 1.5.0
+just publish 1.5.0</code></pre>
       <p>The file names don't include the version, so the download buttons on this site, which point at <code>releases/latest/download/</code>, always give people the newest build.</p>
     </section>
 

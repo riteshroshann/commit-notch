@@ -1,7 +1,7 @@
 {
   "name": "commit-notch",
   "productName": "Commit Notch",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Your GitHub contributions and an atomic world clock, hanging from the top of your screen.",
   "author": "Ritesh Roshan <riteshroshansahoo01@gmail.com>",
   "license": "MIT",
@@ -35,7 +35,8 @@
       {
         "provider": "github",
         "owner": "riteshroshann",
-        "repo": "commit-notch"
+        "repo": "commit-notch",
+        "releaseType": "draft"
       }
     ]
   },
@@ -46,5 +47,8 @@
     "electron": "33.2.1",
     "electron-builder": "25.1.8",
     "typescript": "5.6.3"
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
   }
 }
