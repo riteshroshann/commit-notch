@@ -2,6 +2,10 @@
 
 Each `## <version>` section becomes the release notes and the text in the in-app update dialog.
 
+## 1.4.1
+
+Updating from 1.3.0 or older switched off Open at login. This turns it back on, once; switch it off again from the tray menu if you prefer.
+
 ## 1.4.0
 
 Commit Notch now updates itself. New versions download quietly in the background, and when a bigger release lands you'll be asked to restart; small fixes simply install the next time the app closes. The tray menu has Check for updates too.

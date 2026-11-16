@@ -31,7 +31,7 @@ if (!tooling && !app.requestSingleInstanceLock()) {
 if (arg("profile")) app.setPath("userData", /** @type {string} */ (arg("profile")));
 const store = (/** @type {string} */ name) => path.join(app.getPath("userData"), name);
 
-/** @returns {{ sound: boolean, useGhCli: boolean, cities: string[][] }} */
+/** @returns {{ sound: boolean, useGhCli: boolean, cities: string[][], version?: string }} */
 function loadSettings() {
   const defaults = {
     sound: true,
@@ -52,6 +52,15 @@ function loadSettings() {
 const firstRun = !fs.existsSync(path.join(app.getPath("userData"), "settings.json"));
 const settings = loadSettings();
 const saveSettings = () => fs.writeFileSync(store("settings.json"), JSON.stringify(settings, null, 2));
+
+/** Settings remember the version that last ran, so an upgrade can repair what an older one broke. */
+function migrate() {
+  // 1.3.0 and older removed start at login while updating; setup has it on by default, so restore it once
+  if (app.isPackaged && !firstRun && !settings.version) app.setLoginItemSettings({ openAtLogin: true });
+  if (settings.version === pkg.version) return;
+  settings.version = pkg.version;
+  saveSettings();
+}
 
 // ---------- log ----------
 // One small file in the profile folder, so a crash becomes a line someone can send instead of a dialog.
@@ -483,7 +492,7 @@ app.on("window-all-closed", () => {}); // closing setup never quits the widget
 
 app.whenReady().then(async () => {
   if (setupShots) return require("../test/setup-shots.js")(openSetup, setupShots);
-  if (!tooling && firstRun) saveSettings();
+  if (!tooling) migrate();
   const first = createWindow();
   if (!tooling) buildTray();
   first.webContents.once("did-finish-load", async () => {

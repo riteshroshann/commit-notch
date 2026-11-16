@@ -2,6 +2,13 @@
 
 Field reports, what caused them, and what fixed them. Newest first.
 
+## 5. Upgrading from 1.3.0 switched off Open at login
+
+**Found** 16 Nov 2026, upgrading this PC from 1.3.0 to 1.4.0.
+**Symptom** After the upgrade, Commit Notch no longer starts with Windows.
+**Cause** An upgrade runs the previous version's uninstaller. 1.3.0's uninstaller deletes the start-at-login entry unconditionally; the `isUpdated` guard only exists from 1.4.0 on, so 1.4.0 can't protect its own install.
+**Fix** 1.4.1 records the last version that ran in `settings.json`. On the first run after upgrading from 1.4.0 or older, it turns Open at login back on once, matching setup's default. Upgrades from 1.4.0 onward never lose it.
+
 ## 4. Updating meant reinstalling
 
 **Reported** 16 Nov 2026, version 1.3.0.
