@@ -234,26 +234,34 @@ api.on("done", (/** @type {{ name: string, login: string, avatar?: string }} */ 
 $("finish").addEventListener("click", () => api.finish(/** @type {HTMLInputElement} */ ($("atLogin")).checked));
 
 // ---------- boot ----------
-api.info().then((/** @type {{ version: string, deviceFlow: boolean, openAtLogin: boolean }} */ info) => {
-  $("version").textContent = `v${info.version}`;
-  /** @type {HTMLInputElement} */ ($("atLogin")).checked = info.firstRun || info.openAtLogin;
-  if (!info.deviceFlow) {
-    // no OAuth app configured in this build: the CLI becomes the main way in
-    $("browser").hidden = true;
-  }
-  const start = query.get("pane") ?? "start";
-  if (mock && start === "code") api.on("code", () => {});
-  show(start);
-  if (mock && start === "code") {
-    $("userCode").textContent = "8F3K-2QXW";
-    $("waitText").textContent = "Code copied. Waiting for GitHub · 14:52";
-  }
-  if (mock && start === "done") {
-    $("doneTitle").textContent = "You're in, Ritesh.";
-    $("avatar").textContent = "R";
-  }
-  if (mock && start === "error") {
-    $("errTitle").textContent = ERRORS.expired[0];
-    $("errText").textContent = ERRORS.expired[1];
-  }
-});
+api
+  .info()
+  .then(
+    (
+      /** @type {{ version: string, deviceFlow: boolean, openAtLogin: boolean, firstRun: boolean, store: boolean }} */ info,
+    ) => {
+      // Store installs start with Windows through a startup task that Windows Settings controls
+      if (info.store) /** @type {HTMLElement} */ ($("atLogin").closest("label")).hidden = true;
+      $("version").textContent = `v${info.version}`;
+      /** @type {HTMLInputElement} */ ($("atLogin")).checked = info.firstRun || info.openAtLogin;
+      if (!info.deviceFlow) {
+        // no OAuth app configured in this build: the CLI becomes the main way in
+        $("browser").hidden = true;
+      }
+      const start = query.get("pane") ?? "start";
+      if (mock && start === "code") api.on("code", () => {});
+      show(start);
+      if (mock && start === "code") {
+        $("userCode").textContent = "8F3K-2QXW";
+        $("waitText").textContent = "Code copied. Waiting for GitHub · 14:52";
+      }
+      if (mock && start === "done") {
+        $("doneTitle").textContent = "You're in, Ritesh.";
+        $("avatar").textContent = "R";
+      }
+      if (mock && start === "error") {
+        $("errTitle").textContent = ERRORS.expired[0];
+        $("errText").textContent = ERRORS.expired[1];
+      }
+    },
+  );

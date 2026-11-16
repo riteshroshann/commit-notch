@@ -7,6 +7,7 @@ Windows desktop widget: GitHub contributions (private included) and an NTP-synce
 - `just check`: biome, tsc (checkJs on src/*.js), bun test
 - `just fmt`: fix formatting
 - `just dist`: installer + zip via Electron's bundled Node (no Node installed here; electron-builder breaks under bun)
+- `just store`: Microsoft Store .appx (needs the Partner Center identity; see STORE.md); `just store-assets` renders its tiles and screenshots
 
 ## Layout
 - `src/main.js`: window, tray, IPC, settings, token storage

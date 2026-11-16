@@ -42,3 +42,11 @@ release version:
 # Publish a drafted release so installed apps pick it up
 publish version:
     gh release edit "v{{version}}" --draft=false --latest
+
+# Microsoft Store package (needs the Partner Center identity in package.json, see STORE.md)
+store:
+    $env:ELECTRON_RUN_AS_NODE="1"; node_modules/electron/dist/electron.exe scripts/store.js
+
+# Store tiles (build/appx/) and listing screenshots (store/)
+store-assets:
+    $env:ELECTRON_RUN_AS_NODE=$null; node_modules/electron/dist/electron.exe scripts/store-assets.js

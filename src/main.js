@@ -22,6 +22,8 @@ const e2eOut = arg("e2e");
 const setupShots = arg("setup-shot");
 const rendererDir = arg("renderer") ?? path.join(__dirname, "renderer");
 const tooling = Boolean(shotPath || e2eOut || setupShots);
+// The Microsoft Store build: the Store updates it and a startup task starts it with Windows.
+const fromStore = process.windowsStore === true;
 if (!tooling && !app.requestSingleInstanceLock()) {
   app.quit();
   process.exit(0);
@@ -56,7 +58,7 @@ const saveSettings = () => fs.writeFileSync(store("settings.json"), JSON.stringi
 /** Settings remember the version that last ran, so an upgrade can repair what an older one broke. */
 function migrate() {
   // 1.3.0 and older removed start at login while updating; setup has it on by default, so restore it once
-  if (app.isPackaged && !firstRun && !settings.version) app.setLoginItemSettings({ openAtLogin: true });
+  if (app.isPackaged && !fromStore && !firstRun && !settings.version) app.setLoginItemSettings({ openAtLogin: true });
   if (settings.version === pkg.version) return;
   settings.version = pkg.version;
   saveSettings();
@@ -354,6 +356,7 @@ ipcMain.handle("setup:info", () => ({
   deviceFlow: Boolean(CLIENT_ID),
   openAtLogin: app.getLoginItemSettings().openAtLogin,
   firstRun,
+  store: fromStore,
 }));
 
 ipcMain.on("setup:start", async () => {
@@ -416,7 +419,7 @@ ipcMain.handle("setup:cli", async () => {
 
 ipcMain.on("setup:open", (_e, url) => safeUrl(url) && shell.openExternal(url));
 ipcMain.on("setup:finish", (_e, openAtLogin) => {
-  app.setLoginItemSettings({ openAtLogin: Boolean(openAtLogin) });
+  if (!fromStore) app.setLoginItemSettings({ openAtLogin: Boolean(openAtLogin) });
   setup?.close();
   setTimeout(() => send("open", "gh"), 450);
 });
@@ -447,13 +450,15 @@ function appMenu() {
         send("settings", settings);
       },
     },
-    {
-      label: "Open at login",
-      type: "checkbox",
-      checked: app.getLoginItemSettings().openAtLogin,
-      click: (i) => app.setLoginItemSettings({ openAtLogin: i.checked }),
-    },
-    updater.menuItem(),
+    fromStore
+      ? { label: "Startup settings…", click: () => shell.openExternal("ms-settings:startupapps") }
+      : {
+          label: "Open at login",
+          type: "checkbox",
+          checked: app.getLoginItemSettings().openAtLogin,
+          click: (i) => app.setLoginItemSettings({ openAtLogin: i.checked }),
+        },
+    ...(fromStore ? [] : [updater.menuItem()]),
     { type: "separator" },
     ...(signedIn ? [{ label: "Sign out of GitHub", click: signOut }] : []),
     { label: "Help and privacy", click: () => shell.openExternal(SITE) },
@@ -504,9 +509,9 @@ app.whenReady().then(async () => {
     pushTime();
     if (tooling) return;
     // signed in through the GitHub CLI already: no setup, so start with Windows by default
-    if (firstRun && res.data) app.setLoginItemSettings({ openAtLogin: true });
+    if (firstRun && res.data && !fromStore) app.setLoginItemSettings({ openAtLogin: true });
     if (res.error === "signin") openSetup();
-    updater.start(log);
+    if (!fromStore) updater.start(log);
   });
   setInterval(pushContributions, REFRESH_MS);
   setInterval(pushTime, RESYNC_MS);

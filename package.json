@@ -9,7 +9,8 @@
   "githubClientId": "Ov23li5JPEpyTEY7Yhth",
   "scripts": {
     "start": "electron .",
-    "dist": "electron scripts/dist.js"
+    "dist": "electron scripts/dist.js",
+    "store": "electron scripts/store.js"
   },
   "build": {
     "appId": "com.riteshroshann.commitnotch",
@@ -38,7 +39,16 @@
         "repo": "commit-notch",
         "releaseType": "draft"
       }
-    ]
+    ],
+    "appx": {
+      "displayName": "Commit Notch",
+      "publisherDisplayName": "Ritesh Roshan",
+      "backgroundColor": "#000000",
+      "languages": ["en-US"],
+      "customExtensionsPath": "build/appx-extensions.xml",
+      "minVersion": "10.0.17763.0",
+      "maxVersionTested": "10.0.26100.0"
+    }
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

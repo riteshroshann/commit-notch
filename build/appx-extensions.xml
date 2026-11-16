@@ -1,0 +1,3 @@
+        <desktop:Extension Category="windows.startupTask" Executable="app\Commit Notch.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="CommitNotchStartup" Enabled="true" DisplayName="Commit Notch" />
+        </desktop:Extension>

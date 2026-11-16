@@ -501,6 +501,9 @@ h1 {
     opacity: 0;
   }
 }
+.toggle[hidden] {
+  display: none;
+}
 .toggle {
   margin-top: 28px;
   display: flex;
