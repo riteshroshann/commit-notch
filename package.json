@@ -1,7 +1,7 @@
 {
   "name": "commit-notch",
   "productName": "Commit Notch",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Your GitHub contributions and an atomic world clock, hanging from the top of your screen.",
   "author": "Ritesh Roshan <riteshroshansahoo01@gmail.com>",
   "license": "MIT",
