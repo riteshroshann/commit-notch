@@ -2,6 +2,10 @@
 
 Each `## <version>` section becomes the release notes and the text in the in-app update dialog.
 
+## 1.5.2
+
+Clicking an island now opens it on the first try. Commit Notch used to stop catching the mouse the moment the cursor came to rest, so a click could fall through to the desktop, and the island also snapped wider at the end of opening. Both are fixed, and hovering no longer pulls keyboard focus away from the app you're typing in.
+
 ## 1.5.1
 
 Smoother opening. The first click after starting no longer stalls for a moment before the island opens, and the account picker opens already filled instead of growing from an empty strip.

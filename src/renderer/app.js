@@ -169,11 +169,26 @@ for (const el of /** @type {HTMLElement[]} */ ([...document.querySelectorAll(".i
   el.addEventListener("pointerup", () => Motion.press(el, 1));
 }
 
-// Click-through everywhere except the islands themselves.
-$("bar").addEventListener("pointermove", (e) => {
-  bridge.hover(Boolean(/** @type {HTMLElement} */ (e.target).closest(".island")));
-});
-document.addEventListener("pointerleave", () => bridge.hover(false));
+// Click-through everywhere except the islands: main checks the cursor against these boxes.
+let areasQueued = false;
+function reportAreas() {
+  if (areasQueued) return;
+  areasQueued = true;
+  requestAnimationFrame(() => {
+    areasQueued = false;
+    const boxes = [...document.querySelectorAll(".island")].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: Math.floor(r.x), y: Math.floor(r.y), w: Math.ceil(r.width), h: Math.ceil(r.height) };
+    });
+    bridge.areas?.(boxes);
+  });
+}
+const watchSize = new ResizeObserver(reportAreas);
+for (const el of document.querySelectorAll(".island")) watchSize.observe(el);
+addEventListener("transitionend", reportAreas);
+addEventListener("animationend", reportAreas);
+reportAreas();
+setTimeout(reportAreas, 1500); // the launch drop-in moves islands without resizing them
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (pickerOpen()) closePicker();

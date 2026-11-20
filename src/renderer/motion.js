@@ -39,11 +39,13 @@ const Motion = (() => {
    * @param {HTMLElement} el @param {boolean} open
    */
   function morph(el, open) {
-    const from = el.getBoundingClientRect();
+    // layout size, not getBoundingClientRect: a hover or press scale would skew the target,
+    // and the island would visibly snap to its real size when the spring ended
+    const from = { width: el.offsetWidth, height: el.offsetHeight };
     for (const a of el.getAnimations()) if (a.id === "size") a.cancel();
     el.classList.toggle("open", open);
     if (reduced) return;
-    const to = el.getBoundingClientRect();
+    const to = { width: el.offsetWidth, height: el.offsetHeight };
     const s = open ? bouncy : snappy;
     const a = el.animate(
       [

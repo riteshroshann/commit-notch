@@ -4,7 +4,7 @@ const CHANNELS = new Set(["contributions", "time", "settings", "collapse", "open
 
 contextBridge.exposeInMainWorld("notch", {
   init: () => ipcRenderer.invoke("init"),
-  hover: (/** @type {boolean} */ inside) => ipcRenderer.send("hover", inside),
+  areas: (/** @type {{ x: number, y: number, w: number, h: number }[]} */ boxes) => ipcRenderer.send("areas", boxes),
   refresh: () => ipcRenderer.send("refresh"),
   quit: () => ipcRenderer.send("quit"),
   menu: () => ipcRenderer.send("menu"),

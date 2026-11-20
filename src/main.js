@@ -538,11 +538,35 @@ function buildTray() {
 ipcMain.on("menu", () => alive(win) && appMenu().popup({ window: win }));
 ipcMain.on("quit", () => app.quit());
 ipcMain.on("setup", () => openSetup());
-ipcMain.on("hover", (_e, inside) => {
-  if (e2eOut || !alive(win)) return;
-  win.setIgnoreMouseEvents(!inside, { forward: true });
-  if (inside) win.focus();
+// ---------- click-through ----------
+// The window is mostly empty, so clicks pass through it except over the islands. Page events
+// can't decide this: while passing clicks through, Windows follows every forwarded move with a
+// fake leave, and acting on those let go of the mouse the moment the cursor stopped. So the
+// page reports where the islands are, and this checks the real cursor against them.
+
+const CURSOR_MS = 40;
+/** @type {{ x: number, y: number, w: number, h: number }[]} island boxes, window coordinates */
+let areas = [];
+let catching = false;
+
+ipcMain.on("areas", (_e, boxes) => {
+  if (!Array.isArray(boxes)) return;
+  areas = boxes.filter((b) => [b?.x, b?.y, b?.w, b?.h].every(Number.isFinite));
 });
+
+function followCursor() {
+  if (!alive(win)) return;
+  const p = screen.getCursorScreenPoint();
+  const b = win.getBounds();
+  const x = p.x - b.x;
+  const y = p.y - b.y;
+  const inside = areas.some((a) => x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h);
+  if (inside === catching) return;
+  catching = inside;
+  // no focus here: grabbing it on hover stole it from the app you were typing in, and when
+  // Windows refused, the bounce back read as a blur and closed the island. A click focuses anyway.
+  win.setIgnoreMouseEvents(!catching, { forward: true });
+}
 ipcMain.handle("init", () => settings);
 ipcMain.handle("accounts", listAccounts);
 ipcMain.on("view", (_e, login) => typeof login === "string" && /^[\w-]{1,39}$/.test(login) && viewAccount(login));
@@ -575,6 +599,7 @@ app.whenReady().then(async () => {
     if (res.error === "signin") openSetup();
     if (!fromStore) updater.start(log);
   });
+  if (!tooling) setInterval(followCursor, CURSOR_MS);
   setInterval(pushContributions, REFRESH_MS);
   setInterval(pushTime, RESYNC_MS);
   screen.on("display-metrics-changed", () => {
