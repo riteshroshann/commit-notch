@@ -456,6 +456,7 @@ function setAvatar(d, attempt = 0) {
 
 tick();
 Motion.intro([...document.querySelectorAll(".island")]);
+requestIdleCallback(() => Sound.warm(), { timeout: 3000 });
 
 /** "just now", "3h ago", "2d ago", or a date for anything older than a month. @param {string} iso */
 function ago(iso) {

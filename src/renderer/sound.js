@@ -83,6 +83,10 @@ const Sound = (() => {
   };
 
   return {
+    /** Opening the audio device blocks for ~300 ms; do it while idle, not on the first hover. */
+    warm() {
+      if (enabled && !ctx) audio();
+    },
     /** @param {boolean} on */ setEnabled(on) {
       enabled = on;
     },
