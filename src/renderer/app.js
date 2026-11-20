@@ -232,6 +232,7 @@ const fmt = new Intl.NumberFormat("en");
 /** @param {any} d */
 function renderContributions(d) {
   currentLogin = d.login;
+  loadAccounts();
   $("name").textContent = d.name;
   setAvatar(d);
   $("total").textContent = `${fmt.format(d.total)} contributions in the last year`;
@@ -493,6 +494,13 @@ function color(c) {
 
 /** @type {string | null} login on screen now */
 let currentLogin = null;
+/** @type {string[] | null} fetched ahead, so the picker opens already full */
+let knownAccounts = null;
+
+async function loadAccounts() {
+  knownAccounts = /** @type {string[]} */ ((await bridge.accounts?.()) ?? []);
+  return knownAccounts;
+}
 const pickerOpen = () => !$("accounts").hidden && !$("accounts").classList.contains("closing");
 
 const avatarOf = (/** @type {string} */ login) =>
@@ -542,15 +550,10 @@ function addRow(/** @type {number} */ i) {
   return row;
 }
 
-async function openPicker() {
+/** Fill the picker; `settled` skips the entrance so a quiet refresh doesn't replay it. */
+function fillPicker(/** @type {string[]} */ logins, settled = false) {
   const box = $("accounts");
-  box.classList.remove("closing");
-  box.replaceChildren();
-  box.hidden = false;
-  $("who").setAttribute("aria-expanded", "true");
-  Sound.play("open");
-  const logins = /** @type {string[]} */ ((await bridge.accounts?.()) ?? []);
-  if (!pickerOpen()) return;
+  box.classList.toggle("settled", settled);
   const rows = logins.map(accountRow);
   if (!rows.length) {
     const note = document.createElement("div");
@@ -559,7 +562,29 @@ async function openPicker() {
     rows.push(note);
   }
   box.replaceChildren(...rows, document.createElement("hr"), addRow(rows.length));
-  /** @type {HTMLElement | null} */ (box.querySelector('[aria-checked="true"]') ?? box.querySelector(".acct"))?.focus();
+}
+
+/** Hidden elements can't take focus, so this runs after the picker shows. */
+const focusPicker = () =>
+  /** @type {HTMLElement | null} */ (
+    $("accounts").querySelector('[aria-checked="true"]') ?? $("accounts").querySelector(".acct")
+  )?.focus();
+
+async function openPicker() {
+  const box = $("accounts");
+  const logins = knownAccounts ?? (await loadAccounts());
+  box.classList.remove("closing");
+  fillPicker(logins);
+  box.hidden = false;
+  $("who").setAttribute("aria-expanded", "true");
+  Sound.play("open");
+  focusPicker();
+  // accounts can change while the app runs; catch up without replaying the entrance
+  const fresh = await loadAccounts();
+  if (pickerOpen() && fresh.join() !== logins.join()) {
+    fillPicker(fresh, true);
+    focusPicker();
+  }
 }
 
 function closePicker() {
