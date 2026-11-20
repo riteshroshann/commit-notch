@@ -2,6 +2,10 @@
 
 Each `## <version>` section becomes the release notes and the text in the in-app update dialog.
 
+## 1.5.1
+
+Smoother opening. The first click after starting no longer stalls for a moment before the island opens, and the account picker opens already filled instead of growing from an empty strip.
+
 ## 1.5.0
 
 Click your profile photo to switch accounts. Every GitHub account on this PC is listed: the ones you signed in to here and every account the GitHub CLI holds. Pick one and Commit Notch stays on it, without changing your GitHub CLI or anything else. Add account signs in one you haven't set up yet.
