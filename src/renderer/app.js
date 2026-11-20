@@ -131,7 +131,7 @@ function setOpen(el) {
 
 for (const el of islands) {
   el.addEventListener("click", (e) => {
-    if (/** @type {HTMLElement} */ (e.target).closest("form, .dots, .quit")) return;
+    if (/** @type {HTMLElement} */ (e.target).closest("form, .dots, .quit, .who, .accounts")) return;
     if (el.id === "gh" && signedOut) return bridge.setup();
     setOpen(el === openIsland ? null : el);
   });
@@ -145,7 +145,7 @@ for (const q of document.querySelectorAll(".quit")) {
   });
 }
 document.addEventListener("keydown", (e) => {
-  if (openIsland?.id !== "gh" || /** @type {HTMLElement} */ (e.target).closest("form")) return;
+  if (openIsland?.id !== "gh" || pickerOpen() || /** @type {HTMLElement} */ (e.target).closest("form")) return;
   const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
   if (!step) return;
   e.preventDefault();
@@ -174,8 +174,15 @@ $("bar").addEventListener("pointermove", (e) => {
   bridge.hover(Boolean(/** @type {HTMLElement} */ (e.target).closest(".island")));
 });
 document.addEventListener("pointerleave", () => bridge.hover(false));
-document.addEventListener("keydown", (e) => e.key === "Escape" && setOpen(null));
-bridge.on("collapse", () => setOpen(null));
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (pickerOpen()) closePicker();
+  else setOpen(null);
+});
+bridge.on("collapse", () => {
+  closePicker();
+  setOpen(null);
+});
 bridge.on("open", (/** @type {string} */ id) => setOpen($(id)));
 
 // ---------- contributions ----------
@@ -224,6 +231,7 @@ const fmt = new Intl.NumberFormat("en");
 
 /** @param {any} d */
 function renderContributions(d) {
+  currentLogin = d.login;
   $("name").textContent = d.name;
   setAvatar(d);
   $("total").textContent = `${fmt.format(d.total)} contributions in the last year`;
@@ -479,3 +487,119 @@ function esc(s) {
 function color(c) {
   return /^#[0-9a-f]{3,8}$/i.test(c ?? "") ? c : "#8e8e93";
 }
+
+// ---------- account picker ----------
+// The photo opens a list of every account on this PC. Picking one pins it here only.
+
+/** @type {string | null} login on screen now */
+let currentLogin = null;
+const pickerOpen = () => !$("accounts").hidden && !$("accounts").classList.contains("closing");
+
+const avatarOf = (/** @type {string} */ login) =>
+  `https://avatars.githubusercontent.com/${encodeURIComponent(login)}?s=64`;
+
+/** @param {string} login @param {number} i */
+function accountRow(login, i) {
+  const row = document.createElement("div");
+  row.className = "acct";
+  row.setAttribute("role", "menuitemradio");
+  row.setAttribute("aria-checked", String(login === currentLogin));
+  row.tabIndex = 0;
+  row.style.setProperty("--i", String(i));
+  const img = new Image();
+  img.alt = "";
+  img.src = avatarOf(login);
+  const name = document.createElement("span");
+  name.className = "login";
+  name.textContent = login;
+  row.append(img, name);
+  if (login === currentLogin) {
+    const tag = document.createElement("small");
+    tag.textContent = "Viewing";
+    row.append(tag);
+  }
+  row.addEventListener("click", () => pick(login));
+  return row;
+}
+
+function addRow(/** @type {number} */ i) {
+  const row = document.createElement("div");
+  row.className = "acct";
+  row.setAttribute("role", "menuitem");
+  row.tabIndex = 0;
+  row.style.setProperty("--i", String(i));
+  const plus = document.createElement("span");
+  plus.className = "plus";
+  plus.textContent = "+";
+  const label = document.createElement("span");
+  label.className = "login";
+  label.textContent = "Add account";
+  row.append(plus, label);
+  row.addEventListener("click", () => {
+    closePicker();
+    bridge.setup();
+  });
+  return row;
+}
+
+async function openPicker() {
+  const box = $("accounts");
+  box.classList.remove("closing");
+  box.replaceChildren();
+  box.hidden = false;
+  $("who").setAttribute("aria-expanded", "true");
+  Sound.play("open");
+  const logins = /** @type {string[]} */ ((await bridge.accounts?.()) ?? []);
+  if (!pickerOpen()) return;
+  const rows = logins.map(accountRow);
+  if (!rows.length) {
+    const note = document.createElement("div");
+    note.className = "note";
+    note.textContent = "No other accounts on this PC yet.";
+    rows.push(note);
+  }
+  box.replaceChildren(...rows, document.createElement("hr"), addRow(rows.length));
+  /** @type {HTMLElement | null} */ (box.querySelector('[aria-checked="true"]') ?? box.querySelector(".acct"))?.focus();
+}
+
+function closePicker() {
+  const box = $("accounts");
+  if (box.hidden) return;
+  $("who").setAttribute("aria-expanded", "false");
+  box.classList.add("closing");
+  setTimeout(() => {
+    if (box.classList.contains("closing")) box.hidden = true;
+  }, 140);
+}
+
+function pick(/** @type {string} */ login) {
+  closePicker();
+  if (login === currentLogin) return;
+  Sound.play("hover");
+  bridge.view?.(login);
+}
+
+$("who").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (signedOut) return;
+  pickerOpen() ? closePicker() : openPicker();
+});
+$("who").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  e.preventDefault();
+  pickerOpen() ? closePicker() : openPicker();
+});
+$("accounts").addEventListener("keydown", (e) => {
+  const rows = /** @type {HTMLElement[]} */ ([...$("accounts").querySelectorAll(".acct")]);
+  const at = rows.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    rows[(at + (e.key === "ArrowDown" ? 1 : -1) + rows.length) % rows.length]?.focus();
+  } else if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    rows[at]?.click();
+  }
+});
+document.addEventListener("pointerdown", (e) => {
+  if (pickerOpen() && !(/** @type {HTMLElement} */ (e.target).closest(".accounts, .who"))) closePicker();
+});

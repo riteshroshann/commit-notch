@@ -20,13 +20,32 @@ const QUERY = `query {
   }
 }`;
 
-/** Token from the GitHub CLI if it's signed in, else null. */
-function ghCliToken() {
+/** @param {string[]} args @returns {Promise<string | null>} */
+function gh(args) {
   return new Promise((resolve) => {
-    execFile("gh", ["auth", "token"], { windowsHide: true, timeout: 4000 }, (err, out) => {
+    execFile("gh", args, { windowsHide: true, timeout: 4000 }, (err, out) => {
       resolve(err ? null : out.trim() || null);
     });
   });
+}
+
+/** Token from the GitHub CLI: its active account, or `login` if given. Read only; never switches. */
+const ghCliToken = (/** @type {string} */ login = "") =>
+  gh(["auth", "token", "--hostname", "github.com", ...(login ? ["--user", login] : [])]);
+
+/** Every github.com account the GitHub CLI holds, active one first. */
+async function ghCliAccounts() {
+  const out = await gh(["auth", "status", "--json", "hosts"]);
+  try {
+    /** @type {{ login: string, active: boolean, state: string }[]} */
+    const list = JSON.parse(out ?? "").hosts["github.com"] ?? [];
+    return list
+      .filter((a) => a.state === "success")
+      .sort((a, b) => Number(b.active) - Number(a.active))
+      .map((a) => a.login);
+  } catch {
+    return [];
+  }
 }
 
 /** @param {string} token */
@@ -76,4 +95,4 @@ async function fetchContributions(token) {
   };
 }
 
-module.exports = { ghCliToken, fetchContributions };
+module.exports = { ghCliToken, ghCliAccounts, fetchContributions };

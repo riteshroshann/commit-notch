@@ -2,7 +2,7 @@ const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, safeStorage, scree
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const { ghCliToken, fetchContributions } = require("./github.js");
+const { ghCliToken, ghCliAccounts, fetchContributions } = require("./github.js");
 const { requestCode, waitForToken } = require("./auth.js");
 const ntp = require("./ntp.js");
 const updater = require("./updater.js");
@@ -33,7 +33,7 @@ if (!tooling && !app.requestSingleInstanceLock()) {
 if (arg("profile")) app.setPath("userData", /** @type {string} */ (arg("profile")));
 const store = (/** @type {string} */ name) => path.join(app.getPath("userData"), name);
 
-/** @returns {{ sound: boolean, useGhCli: boolean, cities: string[][], version?: string }} */
+/** @returns {{ sound: boolean, useGhCli: boolean, cities: string[][], version?: string, viewing?: string }} */
 function loadSettings() {
   const defaults = {
     sound: true,
@@ -86,52 +86,107 @@ if (!tooling) {
 }
 
 // ---------- who is signed in ----------
-// `epoch` changes on every sign in and sign out; work that started under an older epoch is dropped.
+// Accounts come from two places: sign ins made in this app (accounts.bin, encrypted) and every
+// account the GitHub CLI holds. `settings.viewing` pins the one on screen; picking one changes
+// nothing else, the CLI's active account included.
+// `epoch` changes on every switch, sign in and sign out; work that started under an older epoch is dropped.
 
 /** @type {string | null} */
 let token = null;
 let epoch = 0;
 const keyOf = (/** @type {string} */ t) => crypto.createHash("sha256").update(t).digest("hex").slice(0, 16);
 
-function savedToken() {
+/** App sign ins by login. 1.4 and older kept one unnamed token in token.bin; it reads as "". */
+function savedTokens() {
   try {
-    return safeStorage.decryptString(fs.readFileSync(store("token.bin")));
+    return /** @type {Record<string, string>} */ (
+      JSON.parse(safeStorage.decryptString(fs.readFileSync(store("accounts.bin"))))
+    );
+  } catch {}
+  try {
+    return { "": safeStorage.decryptString(fs.readFileSync(store("token.bin"))) };
   } catch {
-    return null;
+    return {};
   }
 }
 
-/** Saved sign in first, then the GitHub CLI unless the person signed out of this app. */
+function saveTokens(/** @type {Record<string, string>} */ map) {
+  fs.writeFileSync(store("accounts.bin"), safeStorage.encryptString(JSON.stringify(map)));
+  fs.rmSync(store("token.bin"), { force: true });
+}
+
+/** The old unnamed token gets its name once we know whose it is. */
+function learnLogin(/** @type {string} */ t, /** @type {string} */ login) {
+  const { "": old, ...rest } = savedTokens();
+  if (old === t) saveTokens({ ...rest, [login]: t });
+}
+
+/** The pinned account, else the first app sign in, else the GitHub CLI's active account. */
 async function resolveToken() {
   if (token) return token;
   const started = epoch;
-  const found = savedToken() || (settings.useGhCli ? await ghCliToken() : null);
+  const saved = savedTokens();
+  const want = settings.viewing;
+  let found = want ? (saved[want] ?? (settings.useGhCli ? await ghCliToken(want) : null)) : null;
+  found ??= Object.values(saved)[0] ?? (settings.useGhCli ? await ghCliToken() : null);
   if (started !== epoch) return token;
   token = found;
   return token;
 }
 
-/** The last good data, but only if it belongs to the account signed in now. */
-function cachedContributions() {
+/** Every account Commit Notch can show: app sign ins, then the GitHub CLI's. */
+async function listAccounts() {
+  const app = Object.keys(savedTokens()).filter(Boolean);
+  const cli = settings.useGhCli ? await ghCliAccounts() : [];
+  return [...new Set([...app, ...cli])];
+}
+
+/** Show `login` from now on. Only Commit Notch changes. */
+async function viewAccount(/** @type {string} */ login) {
+  settings.viewing = login;
+  saveSettings();
+  epoch++;
+  token = null;
+  if (await resolveToken()) {
+    const cached = cachedContributions();
+    if (cached) send("contributions", { data: cached });
+  }
+  pushContributions();
+}
+
+/** Last good data per account, keyed by token hash so it's only ever shown to that sign in. */
+function readCache() {
   try {
     const c = JSON.parse(fs.readFileSync(store("cache.json"), "utf8"));
-    return token && c.key === keyOf(token) ? c.data : null;
+    return /** @type {Record<string, any>} */ (c.key ? { [c.key]: c.data } : c);
   } catch {
-    return null;
+    return {};
   }
+}
+
+function cachedContributions() {
+  return token ? (readCache()[keyOf(token)] ?? null) : null;
 }
 
 /** @param {string} t @param {any} data */
 function writeCache(t, data) {
-  fs.writeFile(store("cache.json"), JSON.stringify({ key: keyOf(t), data }), () => {});
+  // newest last, at most eight accounts
+  const kept = Object.entries(readCache()).filter(([k]) => k !== keyOf(t));
+  const c = Object.fromEntries([...kept.slice(-7), [keyOf(t), data]]);
+  try {
+    fs.writeFileSync(store("cache.json"), JSON.stringify(c));
+  } catch (e) {
+    log("warn", "cache write failed", e);
+  }
 }
 
 function signOut() {
   signIn?.abort();
   epoch++;
   token = null;
-  for (const f of ["token.bin", "cache.json"]) fs.rmSync(store(f), { force: true });
+  for (const f of ["accounts.bin", "token.bin", "cache.json"]) fs.rmSync(store(f), { force: true });
   settings.useGhCli = false;
+  settings.viewing = undefined;
   saveSettings();
   send("contributions", { error: "signin" });
 }
@@ -147,16 +202,19 @@ async function loadContributions() {
   try {
     const data = await fetchContributions(t);
     if (started !== epoch) return { stale: true };
+    learnLogin(t, data.login);
     writeCache(t, data);
     return { data };
   } catch (e) {
     if (started !== epoch) return { stale: true };
     const err = /** @type {Error & { auth?: boolean }} */ (e);
     if (err.auth) {
-      // the token was revoked: forget it and everything fetched with it
+      // the token was revoked: forget it, and the pin, so the next account takes over
       epoch++;
       token = null;
-      for (const f of ["token.bin", "cache.json"]) fs.rmSync(store(f), { force: true });
+      saveTokens(Object.fromEntries(Object.entries(savedTokens()).filter(([, v]) => v !== t)));
+      settings.viewing = undefined;
+      saveSettings();
       return { error: "signin" };
     }
     return { error: err.message };
@@ -340,8 +398,10 @@ async function finishSignIn(t, signal) {
     return { error: err.auth ? "GitHub didn't accept that sign in." : "Can't reach GitHub right now." };
   }
   if (signal?.aborted) return { error: "cancelled" };
-  fs.writeFileSync(store("token.bin"), safeStorage.encryptString(t));
+  learnLogin(t, data.login);
+  saveTokens({ ...savedTokens(), [data.login]: t });
   settings.useGhCli = true;
+  settings.viewing = data.login; // a new sign in is the one you want to see
   saveSettings();
   epoch++;
   token = t;
@@ -484,6 +544,8 @@ ipcMain.on("hover", (_e, inside) => {
   if (inside) win.focus();
 });
 ipcMain.handle("init", () => settings);
+ipcMain.handle("accounts", listAccounts);
+ipcMain.on("view", (_e, login) => typeof login === "string" && /^[\w-]{1,39}$/.test(login) && viewAccount(login));
 ipcMain.on("refresh", pushContributions);
 
 // ---------- boot ----------

@@ -155,6 +155,84 @@ module.exports = async function run(win, out) {
   if ((await state()).open !== "gh") await click("gh");
   await expectOpen("arrows mixed with island switching", "gh");
 
+  // account picker: opens over the panel, keys stay inside it, picking switches only the view
+  const picker = () =>
+    js(`(() => {
+      const box = document.getElementById("accounts");
+      const rows = [...box.querySelectorAll(".acct")];
+      return { open: !box.hidden && !box.classList.contains("closing"), rows: rows.map((r) => r.textContent),
+        current: rows.findIndex((r) => r.getAttribute("aria-checked") === "true"),
+        focused: rows.indexOf(document.activeElement), name: document.getElementById("name").textContent,
+        page: document.querySelector("#gh .dots .on, #gh .dots [aria-current]")?.dataset?.page ?? null };
+    })()`);
+  /** @param {string} name @param {() => Promise<string>} check */
+  async function expect(name, check) {
+    const why = await check();
+    results.push({ name, ok: !why, why: why || "ok" });
+    const r = await rect("gh");
+    const img = await wc.capturePage({
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+      width: Math.round(r.w),
+      height: Math.round(r.h),
+    });
+    const file = `${results.length.toString().padStart(2, "0")}-${why ? "FAIL" : "ok"}-${name.replace(/\W+/g, "-")}.png`;
+    fs.writeFileSync(path.join(out, file), img.toPNG());
+  }
+
+  wc.send("collapse");
+  await sleep(300);
+  await click("gh");
+  await sleep(1100);
+  await click("who");
+  await sleep(1500); // accounts come from the GitHub CLI
+  const before = await picker();
+  await expect("photo opens the account picker", async () => {
+    const s = await state();
+    if (s.open !== "gh") return `island closed (${s.open})`;
+    if (!before.open) return "picker not open";
+    if (!before.rows.some((t) => t.includes("Add account"))) return `rows ${JSON.stringify(before.rows)}`;
+    return "";
+  });
+
+  key("Down");
+  await sleep(200);
+  await expect("arrows move through accounts, not pages", async () => {
+    const s = await picker();
+    if (!s.open) return "picker closed";
+    if (s.focused === before.focused) return `focus stayed on row ${s.focused}`;
+    return "";
+  });
+
+  key("Escape");
+  await sleep(400);
+  await expect("escape closes only the picker", async () => {
+    const s = await picker();
+    if (s.open) return "picker still open";
+    if ((await state()).open !== "gh") return "island closed too";
+    return "";
+  });
+
+  const others = before.rows.filter((t, i) => i !== before.current && !t.includes("Add account"));
+  if (others.length) {
+    const target = /** @type {string} */ (others[0]);
+    await click("who");
+    await sleep(1500);
+    const row = await js(`(() => { const r = [...document.querySelectorAll("#accounts .acct")]
+      .find((e) => e.textContent === ${JSON.stringify(target)}).getBoundingClientRect(); return { x: r.x + 30, y: r.y + r.height / 2 }; })()`);
+    const at = { x: Math.round(row.x), y: Math.round(row.y) };
+    wc.sendInputEvent({ type: "mouseMove", ...at });
+    wc.sendInputEvent({ type: "mouseDown", ...at, button: "left", clickCount: 1 });
+    wc.sendInputEvent({ type: "mouseUp", ...at, button: "left", clickCount: 1 });
+    await sleep(6000); // a fresh account loads from GitHub
+    await expect(`switch to ${target}`, async () => {
+      const s = await picker();
+      if (s.open) return "picker still open";
+      if (s.name === before.name) return `still showing ${s.name}`;
+      return "";
+    });
+  }
+
   const failed = results.filter((r) => !r.ok);
   const report = results.map((r) => `${r.ok ? "PASS" : "FAIL"}  ${r.name}  (${r.why})`).join("\n");
   fs.writeFileSync(path.join(out, "report.txt"), report);

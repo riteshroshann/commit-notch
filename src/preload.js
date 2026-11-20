@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("notch", {
   quit: () => ipcRenderer.send("quit"),
   menu: () => ipcRenderer.send("menu"),
   setup: () => ipcRenderer.send("setup"),
+  accounts: () => ipcRenderer.invoke("accounts"),
+  view: (/** @type {string} */ login) => ipcRenderer.send("view", login),
   on: (/** @type {string} */ channel, /** @type {(v: any) => void} */ fn) => {
     if (CHANNELS.has(channel)) ipcRenderer.on(channel, (_e, v) => fn(v));
   },
